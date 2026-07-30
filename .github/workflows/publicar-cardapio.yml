@@ -43,13 +43,12 @@ jobs:
                   'X-GitHub-Api-Version': '2022-11-28'
                 }
               })
-              core.info('GitHub Pages ativado com sucesso.')
+              core.setOutput('api_status', '201')
+              core.setOutput('api_message', 'GitHub Pages ativado com sucesso.')
             } catch (error) {
-              if (error.status === 409 || error.status === 422) {
-                core.info('GitHub Pages já estava ativado ou configurado.')
-              } else {
-                throw error
-              }
+              core.setOutput('api_status', String(error.status || 'desconhecido'))
+              core.setOutput('api_message', error.message || String(error))
+              core.warning(`Não foi possível ativar o Pages: ${error.status || ''} ${error.message || error}`)
             }
 
       - name: Configurar GitHub Pages
@@ -72,6 +71,8 @@ jobs:
         env:
           PAGE_URL: ${{ steps.deployment.outputs.page_url }}
           ACTIVATE_RESULT: ${{ steps.activate_pages.outcome }}
+          ACTIVATE_API_STATUS: ${{ steps.activate_pages.outputs.api_status }}
+          ACTIVATE_API_MESSAGE: ${{ steps.activate_pages.outputs.api_message }}
           CONFIGURE_RESULT: ${{ steps.configure_pages.outcome }}
           UPLOAD_RESULT: ${{ steps.upload_artifact.outcome }}
           DEPLOY_RESULT: ${{ steps.deployment.outcome }}
@@ -85,6 +86,8 @@ jobs:
               url: process.env.PAGE_URL || 'https://vhbernardo11.github.io/almoxarifado-site/',
               etapas: {
                 ativacao_pages: process.env.ACTIVATE_RESULT,
+                ativacao_api_status: process.env.ACTIVATE_API_STATUS,
+                ativacao_api_mensagem: process.env.ACTIVATE_API_MESSAGE,
                 configuracao_pages: process.env.CONFIGURE_RESULT,
                 envio_arquivos: process.env.UPLOAD_RESULT,
                 publicacao: process.env.DEPLOY_RESULT
