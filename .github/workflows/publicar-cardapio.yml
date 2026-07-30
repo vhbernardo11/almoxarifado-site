@@ -26,12 +26,38 @@ jobs:
     steps:
       - name: Baixar arquivos
         uses: actions/checkout@v4
+
+      - name: Ativar GitHub Pages automaticamente
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            try {
+              await github.request('POST /repos/{owner}/{repo}/pages', {
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                build_type: 'workflow',
+                headers: {
+                  'X-GitHub-Api-Version': '2022-11-28'
+                }
+              })
+              core.info('GitHub Pages ativado com sucesso.')
+            } catch (error) {
+              if (error.status === 409 || error.status === 422) {
+                core.info('GitHub Pages já estava ativado ou configurado.')
+              } else {
+                throw error
+              }
+            }
+
       - name: Configurar GitHub Pages
         uses: actions/configure-pages@v5
+
       - name: Preparar cardápio
         uses: actions/upload-pages-artifact@v4
         with:
           path: cardapio-armazem
+
       - name: Publicar
         id: deployment
         uses: actions/deploy-pages@v4
