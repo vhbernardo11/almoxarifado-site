@@ -1,0 +1,12 @@
+{
+  "status": "falhou",
+  "url": "https://vhbernardo11.github.io/almoxarifado-site/",
+  "etapas": {
+    "ativacao_pages": "failure",
+    "configuracao_pages": "skipped",
+    "envio_arquivos": "skipped",
+    "publicacao": "skipped"
+  },
+  "commit": "8689f1b11ef40d6a36ca96ff2bff7c8f8ba84b56",
+  "atualizado_em": "2026-07-30T23:52:59.235Z"
+}
