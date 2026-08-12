@@ -2,6 +2,7 @@
 'use strict';
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 function activeId(){try{return window.ACSPatientFast?.activePersonId||window.__ACS_ACTIVE_PERSON_ID||sessionStorage.getItem('acs_active_person_id')||''}catch{return''}}
+function accessKey(){try{return new URL(location.href).searchParams.get('k')||localStorage.getItem('esf06_visit_key')||''}catch{return''}}
 function openStandalone(id,button){
   if(!UUID.test(String(id||'')))return false;
   const card=button?.closest?.('.route-item,.patient,.card');
@@ -12,6 +13,8 @@ function openStandalone(id,button){
   if(agenda&&UUID.test(agenda))u.searchParams.set('agenda',agenda);
   if(reason)u.searchParams.set('reason',reason);
   u.searchParams.set('source',agenda?'Roteiro do dia':'Gestão ACS 360');
+  const k=accessKey();
+  if(k)u.searchParams.set('k',k);
   location.assign(u.href);
   return true;
 }
@@ -27,5 +30,5 @@ window.addEventListener('click',e=>{
   document.getElementById('vf-loader')?.remove();
   openStandalone(id,b);
 },true);
-window.__ACS_STANDALONE_VISIT__='21';
+window.__ACS_STANDALONE_VISIT__='23';
 })();
