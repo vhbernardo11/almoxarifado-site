@@ -16,15 +16,15 @@ function urlOf(input){
   }catch{}
   return '';
 }
-function isQuestions(input){
+function apiName(input){
   try{
     const s=urlOf(input);
-    if(!s.includes('/acs-visita-api')) return false;
-    return new URL(s,location.href).searchParams.get('api')==='questions';
-  }catch{return false}
+    if(!s.includes('/acs-visita-api')) return '';
+    return new URL(s,location.href).searchParams.get('api')||'';
+  }catch{return ''}
 }
 function makeResponse(text){
-  return new Response(text,{status:200,headers:{'content-type':'application/json; charset=utf-8','cache-control':'no-store','x-acs-fast-questions':'v20'}});
+  return new Response(text,{status:200,headers:{'content-type':'application/json; charset=utf-8','cache-control':'no-store','x-acs-fast-questions':'v20.1'}});
 }
 function readCache(){
   if(memory) return memory;
@@ -59,7 +59,7 @@ async function warm(url){
       saveCache(text);
       return readCache()||text;
     }catch(e){
-      console.warn('[ACS v20] perguntas serão carregadas depois:',e);
+      console.warn('[ACS v20.1] perguntas serão carregadas depois:',e);
       return null;
     }finally{
       clearTimeout(timer);
@@ -68,21 +68,32 @@ async function warm(url){
   })();
   return warming;
 }
+async function criticalFetch(input,init){
+  const ctl=new AbortController();
+  const timer=setTimeout(()=>ctl.abort(),6000);
+  try{
+    return await upstream(input,{...(init||{}),signal:ctl.signal});
+  }catch(e){
+    if(e?.name==='AbortError') throw new Error('A conexão demorou demais. Toque em Iniciar visita novamente.');
+    throw e;
+  }finally{clearTimeout(timer)}
+}
 
 window.fetch=async function(input,init){
-  if(!isQuestions(input)) return upstream(input,init);
-  const hit=readCache();
-  if(hit) return makeResponse(hit);
-
-  const pending=warm(urlOf(input));
-  const text=await Promise.race([
-    pending,
-    new Promise(resolve=>setTimeout(()=>resolve(null),120))
-  ]);
-  if(text) return makeResponse(text);
-
-  // A entrevista nunca fica bloqueada pelas perguntas complementares.
-  return makeResponse(JSON.stringify({rows:[],degraded:true,pending_questions:true}));
+  const api=apiName(input);
+  if(api==='questions'){
+    const hit=readCache();
+    if(hit) return makeResponse(hit);
+    const pending=warm(urlOf(input));
+    const text=await Promise.race([pending,new Promise(resolve=>setTimeout(()=>resolve(null),120))]);
+    if(text) return makeResponse(text);
+    // Perguntas complementares nunca bloqueiam a abertura da visita.
+    return makeResponse(JSON.stringify({rows:[],degraded:true,pending_questions:true}));
+  }
+  if((api==='person'||api==='family_members')&&String(init?.method||'GET').toUpperCase()==='GET'){
+    return criticalFetch(input,init);
+  }
+  return upstream(input,init);
 };
 
 setTimeout(()=>{
