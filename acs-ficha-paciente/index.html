@@ -14,5 +14,8 @@
 <div id="toast" class="toast hidden"></div>
 <script src="./access-bootstrap-v23.js?v=23"></script>
 <script src="./app.js?v=22" defer></script>
+<script>
+(()=>{'use strict';const FAST='https://pvwqxpqetdxtmqqypqjk.supabase.co/functions/v1/acs-patient-fast',qs=new URL(location.href).searchParams,id=qs.get('person')||'',key=localStorage.getItem('esf06_visit_key')||'';let info=null,busy=false;const label=b=>({'<1':'Menor de 1 ano','1-<2':'1 a < 2 anos','2-4':'2 a 4 anos','5-9':'5 a 9 anos','10-19':'10 a 19 anos','20-59':'20 a 59 anos','60-64':'60 a 64 anos','65+':'65 anos ou mais','desconhecida':'Não classificada'}[b]||b||'Não classificada');async function load(){if(busy||info||!id||!key)return;busy=true;try{const u=new URL(FAST);u.searchParams.set('api','detail');u.searchParams.set('k',key);u.searchParams.set('id',id);const r=await fetch(u,{cache:'no-store'}),j=await r.json();if(r.ok&&j.person)info=j.person}catch(e){}finally{busy=false;patch()}}function patch(){const grid=document.querySelector('#root .grid');if(!grid)return;if(!info){load();return}if(grid.querySelector('.pf36-age-box'))return;const age=info.age==null?'Não cadastrada':info.age+' anos',band=label(info.age_band),a=document.createElement('div'),b=document.createElement('div');a.className='box pf36-age-box';a.innerHTML='<small>Idade</small><b>'+age+'</b>';b.className='box pf36-age-box';b.innerHTML='<small>Faixa etária</small><b>'+band+'</b>';grid.insertBefore(b,grid.children[1]||null);grid.insertBefore(a,grid.children[1]||null)}new MutationObserver(patch).observe(document.documentElement,{subtree:true,childList:true});setTimeout(load,80);setTimeout(patch,700)})();
+</script>
 </body>
 </html>
