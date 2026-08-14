@@ -1,0 +1,1 @@
+(()=>{'use strict';if(window.__ESF06_PLANNER_V42_SHIM__)return;window.__ESF06_PLANNER_V42_SHIM__=true;const s=document.createElement('script');s.src='../esf06-visita/planner-v32.js?v=42';s.defer=true;document.head.appendChild(s)})();
