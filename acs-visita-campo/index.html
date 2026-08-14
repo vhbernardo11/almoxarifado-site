@@ -6,15 +6,17 @@
 <meta name="theme-color" content="#07142c">
 <meta name="referrer" content="no-referrer">
 <title>Visita domiciliar • Gestão ACS 360</title>
-<link rel="stylesheet" href="./style.css?v=21">
+<link rel="stylesheet" href="./style.css?v=38">
 </head>
 <body>
 <header class="topbar">
   <button id="back" class="icon-btn" aria-label="Voltar">‹</button>
   <div class="topcopy"><small>GESTÃO ACS 360</small><strong>Visita domiciliar</strong><span id="top-status">Abrindo paciente…</span></div>
 </header>
-<main id="root"><section class="boot"><div class="spinner"></div><h2>Abrindo visita…</h2><p>Carregando apenas paciente e família.</p></section></main>
+<main id="root"><section class="boot"><div class="spinner"></div><h2>Abrindo visita…</h2><p>Carregando paciente e família.</p></section></main>
 <div id="toast" class="toast hidden"></div>
-<script src="./app.js?v=21" defer></script>
+<script src="./offline-v38.js?v=38"></script>
+<script src="./app.js?v=38" defer></script>
+<script>if('serviceWorker'in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}))}</script>
 </body>
 </html>
