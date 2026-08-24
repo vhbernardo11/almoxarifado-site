@@ -1,0 +1,70 @@
+name: ESF06 fast search patch
+
+on:
+  push:
+    paths:
+      - '.github/workflows/esf06-fast-search.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Patch production search
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+          p=Path('esf06-producao/index.html')
+          s=p.read_text()
+          if '.search-note{' not in s:
+              s=s.replace('.search:focus{border-color:#6fa0ff;box-shadow:0 0 0 3px #e9f1ff}', '.search:focus{border-color:#6fa0ff;box-shadow:0 0 0 3px #e9f1ff}.search-note{margin-top:8px;color:#64748b;font-size:12px;font-weight:750}.search-hit{margin-top:9px;padding:8px 10px;border-radius:11px;background:#eef6ff;color:#315d92;font-size:12px;font-weight:800;line-height:1.35}')
+
+          new_group=r'''function groupFamilies(){const m=new Map;for(const p of state.rows){const id=String(p.family_id);if(!m.has(id))m.set(id,{id,code:p.family_code,responsible:p.responsible_name,street:p.street,number:p.number,neighborhood:p.neighborhood,family_flags:p.family_flags||{},risk:p.family_risk||'Sem risco',visited:!!p.family_visited_month,members:[]});m.get(id).members.push(p)}for(const x of m.values()){x.arrimo=x.members.find(p=>p.role==='responsavel')||x.members.find(p=>N(p.full_name)===N(x.responsible))||x.members[0];x.searchText=N([x.responsible,x.code,x.street,x.number,x.neighborhood,...x.members.map(p=>p.full_name)].filter(Boolean).join(' ')).replace(/\s+/g,' ').trim();x.memberSearch=x.members.map(p=>({name:p.full_name,n:N(p.full_name).replace(/\s+/g,' ').trim()}))}state.families=[...m.values()].sort((a,b)=>String(a.responsible||'').localeCompare(String(b.responsible||''),'pt-BR'))}'''
+          s,n=re.subn(r'function groupFamilies\(\)\{.*?\}\nasync function loadPopulation',new_group+'\nasync function loadPopulation',s,count=1,flags=re.S)
+          if n!=1 and 'x.searchText=' not in s: raise SystemExit('groupFamilies patch failed')
+
+          new_block=r'''function familyCard(x){return `<article class="family ${x.visited?'visited':'pending'}" data-family="${E(x.id)}"><div class="family-top"><div class="family-main"><div class="code">Família ${E(x.code||'—')}</div><div class="family-name">${E(T(x.responsible||x.arrimo?.full_name||'Responsável não informado'))}</div><div class="address">📍 ${E([x.street,x.number,x.neighborhood].filter(Boolean).join(', ')||'Endereço sem dado')}</div></div><span class="status ${x.visited?'ok':'due'}">${x.visited?'✓ Visitada no mês':'● Sem visita no mês'}</span></div><div class="family-meta"><span class="tag arrimo">🏠 ARRIMO</span>${familyTags(x)}</div><div class="search-hit hidden" data-search-hit></div><div class="family-foot"><span>👥 ${x.members.length} integrante(s)</span><span>${E(x.risk||'Sem risco')}</span><strong>Ver família ›</strong></div></article>`}
+function queryTokens(){return N(state.q).replace(/\s+/g,' ').trim().split(' ').filter(Boolean)}
+function familyMatches(x){const f=FILTERS[state.filter]?.[1]||FILTERS.all[1],tokens=queryTokens();return f(x)&&(!tokens.length||tokens.every(t=>x.searchText.includes(t)))}
+function familySearchScore(x){const q=N(state.q).replace(/\s+/g,' ').trim();if(!q)return 99;const resp=N(x.responsible||''),names=x.memberSearch||[];if(resp.startsWith(q))return 0;if(names.some(p=>p.n.startsWith(q)))return 1;if(resp.includes(q))return 2;if(names.some(p=>p.n.includes(q)))return 3;return 4}
+function matchingNames(x){const tokens=queryTokens();if(!tokens.length)return[];return(x.memberSearch||[]).filter(p=>tokens.every(t=>p.n.includes(t))).map(p=>p.name).slice(0,4)}
+function applyFamilySearch(){const grid=document.getElementById('family-grid');if(!grid)return;const cards=new Map([...grid.querySelectorAll('[data-family]')].map(el=>[el.dataset.family,el])),matched=state.families.filter(familyMatches);if(queryTokens().length)matched.sort((a,b)=>familySearchScore(a)-familySearchScore(b)||String(a.responsible||'').localeCompare(String(b.responsible||''),'pt-BR'));for(const x of state.families){const card=cards.get(x.id);if(card)card.classList.add('hidden')}for(const x of matched){const card=cards.get(x.id);if(!card)continue;card.classList.remove('hidden');grid.appendChild(card);const hit=card.querySelector('[data-search-hit]'),names=matchingNames(x);if(hit){if(queryTokens().length){hit.classList.remove('hidden');hit.textContent=names.length?'🔎 Encontrado: '+names.map(T).join(' · '):'🔎 Correspondência no arrimo, família ou endereço'}else{hit.classList.add('hidden');hit.textContent=''}}}const count=document.getElementById('family-result-count'),empty=document.getElementById('family-empty');if(count)count.textContent=queryTokens().length?`${matched.length} família(s) encontrada(s) para “${state.q.trim()}”`:`${matched.length} família(s) neste filtro`;if(empty)empty.classList.toggle('hidden',matched.length>0)}
+function renderFamilies(){const s=stats();app.innerHTML=`<section class="hero"><h1>👥 Famílias</h1><p>Cobertura do mês, arrimo e condições da microárea puxados do Supabase em tempo real.</p></section><div class="grid-kpi"><div class="kpi blue"><b>${s.families}</b><span>Famílias vigentes</span></div><div class="kpi"><b>${s.people}</b><span>Pessoas ativas</span></div><div class="kpi green"><b>${s.visited}</b><span>Visitadas no mês</span></div><div class="kpi red"><b>${s.pending}</b><span>Sem visita no mês</span></div></div><div class="card"><div class="chips">${Object.entries(FILTERS).map(([id,[label]])=>`<button class="chip ${state.filter===id?'on':''}" data-filter="${id}">${E(label)}</button>`).join('')}</div><div style="height:10px"></div><input type="search" class="search" id="family-search" placeholder="Digite MAR, Marcelo, rua, família…" value="${E(state.q)}" autocomplete="off" autocapitalize="none" spellcheck="false" enterkeyhint="search"><div class="search-note" id="family-result-count"></div></div><div class="family-grid" id="family-grid">${state.families.map(familyCard).join('')}</div><div class="empty hidden" id="family-empty">Nenhuma família encontrada.</div>`;app.querySelectorAll('[data-filter]').forEach(b=>b.onclick=()=>{state.filter=b.dataset.filter;app.querySelectorAll('[data-filter]').forEach(x=>x.classList.toggle('on',x.dataset.filter===state.filter));applyFamilySearch()});const input=document.getElementById('family-search');input.oninput=e=>{state.q=e.currentTarget.value;applyFamilySearch()};app.querySelectorAll('[data-family]').forEach(b=>b.onclick=()=>openFamily(b.dataset.family));applyFamilySearch()}'''
+          pattern=r'function familyCard\(x\)\{.*?\}\nfunction filteredFamilies\(\)\{.*?\}\nfunction renderFamilies\(\)\{.*?\}\nfunction openFamily'
+          s,n=re.subn(pattern,new_block+'\nfunction openFamily',s,count=1,flags=re.S)
+          if n!=1 and 'function applyFamilySearch()' not in s: raise SystemExit('family search patch failed')
+          p.write_text(s)
+          PY
+      - name: Validate JavaScript
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+          s=Path('esf06-producao/index.html').read_text()
+          m=re.search(r'<script>\n([\s\S]*?)</script>',s)
+          if not m: raise SystemExit('script not found')
+          Path('/tmp/esf06.js').write_text(m.group(1))
+          PY
+          node --check /tmp/esf06.js
+          grep -q 'function applyFamilySearch()' esf06-producao/index.html
+          grep -q 'Digite MAR, Marcelo' esf06-producao/index.html
+      - name: Commit production patch
+        shell: bash
+        run: |
+          if git diff --quiet -- esf06-producao/index.html; then
+            echo 'Already patched'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add esf06-producao/index.html
+          git commit -m 'Speed up ESF06 family search'
+          git push
