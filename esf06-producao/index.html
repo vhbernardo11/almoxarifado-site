@@ -28,9 +28,11 @@ nav{position:fixed;left:0;right:0;bottom:0;z-index:60;background:#fffffffa;borde
 (()=>{'use strict';
 const BASE='https://pvwqxpqetdxtmqqypqjk.supabase.co/functions/v1/';
 const END={main:'acs-visita-api',fast:'acs-patient-fast',plan:'acs-planner-v32',done:'acs-route-completed-v40'};
+const REC_URL='https://pvwqxpqetdxtmqqypqjk.supabase.co/rest/v1/rpc/esf06_campo_api';
+const REC_PUB='sb_publishable_WwKpO5d-LZzh3vgOF1dJOg_rMO7UHgF';
 let ACCESS=new URL(location.href).searchParams.get('k')||localStorage.getItem('esf06_visit_key')||'';
 if(ACCESS)localStorage.setItem('esf06_visit_key',ACCESS);
-const state={page:'families',rows:[],families:[],profile:null,filter:'all',q:'',routeDate:new Date().toISOString().slice(0,10),busy:false};
+const state={page:'families',rows:[],families:[],profile:null,filter:'all',q:'',routeDate:new Date().toISOString().slice(0,10),busy:false,recadOverview:null,recadStreet:null};
 const app=document.getElementById('app'),nav=document.getElementById('nav');
 const E=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const N=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
@@ -71,6 +73,131 @@ async function completeRoute(id){if(!confirm('Marcar esta visita como concluída
 async function cancelRoute(id){if(!confirm('Cancelar esta visita do roteiro?'))return;try{busy();await api('plan','agenda_cancel',{method:'POST',body:{id}});toast('Visita cancelada.');loadRoute()}catch(e){toast(e.message,'err')}finally{busy(false)}}
 function editDone(x){if(!x)return;const m=modal(`<button class="close" data-close>×</button><h2>Editar concluída</h2><div class="sub">${E(T(x.patient_name))}</div><label>Atividade / motivo</label><textarea id="ed-reason">${E(x.reason||'Visita domiciliar')}</textarea><label>Prioridade</label><select id="ed-pri"><option value="rotina" ${x.priority_block==='rotina'?'selected':''}>Rotina</option><option value="atencao" ${x.priority_block==='atencao'?'selected':''}>Atenção</option><option value="prioridade" ${x.priority_block==='prioridade'?'selected':''}>Prioridade</option><option value="sem visita" ${x.priority_block==='sem visita'?'selected':''}>Sem visita</option><option value="dm/dpoc" ${x.priority_block==='dm/dpoc'?'selected':''}>DM/DPOC</option><option value="idoso 80+" ${x.priority_block==='idoso 80+'?'selected':''}>Idoso 80+</option></select><button class="btn teal block" id="ed-save" style="margin-top:12px">Salvar alteração</button>`);m.el.querySelector('#ed-save').onclick=async()=>{try{busy();await api('done','edit',{method:'POST',body:{id:x.id,reason:m.el.querySelector('#ed-reason').value,priority_block:m.el.querySelector('#ed-pri').value}});m.close();toast('Concluída atualizada.');loadRoute()}catch(e){toast(e.message,'err')}finally{busy(false)}}}
 async function deleteDone(id,name){if(!confirm(`Excluir ${name||'esta visita'} do histórico do roteiro?`))return;try{busy();await api('done','delete',{method:'POST',body:{id}});toast('Visita excluída do roteiro.');loadRoute()}catch(e){toast(e.message,'err')}finally{busy(false)}}
+
+const REC_STATUS={nao_visitado:'Não visitado',mesma_familia:'Mesma família',mudou:'Mudou',outra_familia:'Outra família',imovel_vazio:'Imóvel vazio',nao_encontrado:'Não encontrado',recusou:'Recusou',voltar_depois:'Voltar depois'};
+const REC_FIELDS=[
+['acamado','Acamados'],['deficiencia','Deficiência'],['transtorno_mental_alto_risco','Transtornos mentais de alto risco'],['deficiencia_intelectual','Deficiências intelectuais'],
+['saneamento_ruim','Saneamento ruim'],['desnutricao','Desnutrição'],['abuso_substancia_psicoativa','Abuso de substância psicoativa'],['adulto_sem_renda','>18 anos sem renda'],
+['analfabetismo','Analfabetismo'],['menor_2_anos','Menor de 2 anos'],['maior_60_anos','Maior de 60 anos'],['hipertensao','Hipertensão'],['diabetes','Diabetes'],
+['hemodialise','Hemodializado'],['gestante','Gestante'],['povos_originarios','Povos originários'],['doencas_transmissiveis','Hepatites / hanseníase / leishmaniose / tuberculose'],
+['problema_respiratorio','Problema respiratório com uso de medicamento'],['lgbt','População LGBT'],['cancer','Câncer']
+];
+async function recApi(action,payload={}){
+  const r=await fetch(REC_URL,{method:'POST',headers:{apikey:REC_PUB,'Content-Type':'application/json'},body:JSON.stringify({p_action:action,p_key:'ESF06-CAMPO',p_payload:payload}),cache:'no-store'});
+  const j=await r.json().catch(()=>({message:'Resposta inválida do Supabase'}));
+  if(!r.ok)throw new Error(j.message||j.error||'Falha no recadastramento');
+  return j;
+}
+function recKnown(fam,saved={}){
+  const fs=(fam?.members||[]).map(p=>p.flags||{}),has=k=>fs.some(x=>x[k]===true);
+  const ages=(fam?.members||[]).map(age).filter(x=>x!=null),allAge=!!fam?.members?.length&&ages.length===fam.members.length;
+  const out={
+    acamado:has('acamado')?true:null,
+    deficiencia:has('pcd')?true:null,
+    transtorno_mental_alto_risco:(has('saudeMental')||has('saude_mental'))?true:null,
+    menor_2_anos:ages.some(x=>x<2)?true:(allAge?false:null),
+    maior_60_anos:ages.some(x=>x>=60)?true:(allAge?false:null),
+    hipertensao:has('hipertenso')?true:null,
+    diabetes:has('diabetico')?true:null,
+    gestante:has('gestante')?true:null,
+    problema_respiratorio:has('asma')?true:null,
+    cancer:has('oncologia')?true:null
+  };
+  for(const [k] of REC_FIELDS)if(saved[k]!==undefined&&saved[k]!==null)out[k]=saved[k];
+  return out;
+}
+function recStatusBadge(s){
+  if(s==='mesma_familia')return '<span class="status ok">✓ Mesma família</span>';
+  if(s==='nao_visitado')return '<span class="status due">● Não visitado</span>';
+  return '<span class="status" style="background:#fff2d6;color:#7f5a00">'+E(REC_STATUS[s]||s)+'</span>';
+}
+function recStreetCard(s){
+  const done=(s.total||0)-(s.nao_visitado||0),pct=s.total?Math.round(done*100/s.total):0;
+  return `<div class="card" data-rec-street="${E(s.street)}" style="border-left:6px solid var(--teal)">
+    <div class="row"><div style="flex:1"><div class="title">${E(T(s.street))}</div><div class="sub">${s.total} endereço(s) · ${s.nao_visitado} não visitado(s) · ${pct}% percorrido</div></div>
+    <button class="btn teal" data-open-rec-street="${encodeURIComponent(s.street)}">Abrir rua</button></div>
+    <div style="height:8px;background:#edf1f4;border-radius:999px;overflow:hidden;margin-top:10px"><span style="display:block;height:100%;width:${pct}%;background:var(--teal)"></span></div>
+  </div>`;
+}
+async function renderRecadastro(){
+  busy();
+  try{
+    const j=await recApi('overview');state.recadOverview=j;state.recadStreet=null;
+    const s=j.summary||{},streets=j.streets||[];
+    app.innerHTML=`<section class="hero"><h1>🏘️ Recadastramento</h1><p>Rua por rua, endereço por endereço. Confirme primeiro quem mora no imóvel; depois complete apenas o que falta.</p></section>
+      <div class="grid-kpi"><div class="kpi blue"><b>${E(s.total||0)}</b><span>Famílias vigentes</span></div><div class="kpi red"><b>${E(s.nao_visitado||0)}</b><span>Não visitadas</span></div><div class="kpi green"><b>${E(s.concluidas||0)}</b><span>Endereços resolvidos</span></div><div class="kpi amber"><b>${E(s.voltar_depois||0)}</b><span>Voltar depois</span></div></div>
+      <div class="card"><div class="notice ok"><b>Planilha oficial: 51 colunas.</b><br>28 são dados de entrada e 23 são cálculos automáticos. O Gestão já reaproveita família, responsável, endereço, moradores, idade e vários marcadores clínicos.</div></div>
+      <div class="card"><input type="search" class="search" id="rec-street-search" placeholder="Buscar rua..." autocomplete="off"></div>
+      <div id="rec-street-list">${streets.map(recStreetCard).join('')}</div>`;
+    app.querySelectorAll('[data-open-rec-street]').forEach(b=>b.onclick=()=>openRecStreet(decodeURIComponent(b.dataset.openRecStreet)));
+    const input=document.getElementById('rec-street-search');
+    input.oninput=e=>{const q=N(e.target.value);app.querySelectorAll('[data-rec-street]').forEach(el=>el.classList.toggle('hidden',!N(el.dataset.recStreet).includes(q)))};
+  }catch(e){app.innerHTML=`<div class="card"><div class="notice warn">${E(e.message)}</div></div>`;toast(e.message,'err')}
+  finally{busy(false)}
+}
+async function openRecStreet(street){
+  busy();
+  try{
+    const j=await recApi('street',{street});state.recadStreet=j;
+    app.innerHTML=`<section class="hero"><h1>📍 ${E(T(street))}</h1><p>${j.rows.length} família(s) em ordem de número.</p></section>
+      <div class="row"><button class="btn soft" id="rec-back">← Todas as ruas</button></div>
+      <div class="card" style="margin-top:10px"><input type="search" class="search" id="rec-house-search" placeholder="Buscar número, responsável ou família..." autocomplete="off"></div>
+      <div id="rec-house-list">${j.rows.map(x=>`<article class="family ${x.visit_status==='nao_visitado'?'pending':'visited'}" data-rec-house="${E([x.number,x.responsible_name,x.family_code].join(' '))}">
+        <div class="family-top"><div class="family-main"><div class="code">Família ${E(x.family_code||'—')}</div><div class="family-name">Nº ${E(x.number||'s/n')} · ${E(T(x.responsible_name||'Responsável não informado'))}</div><div class="address">📍 ${E([x.street,x.number,x.reference,x.neighborhood].filter(Boolean).join(', ')||'Sem endereço')}</div></div>${recStatusBadge(x.visit_status)}</div>
+        <div class="family-foot"><span>👥 ${E(x.member_count??'—')} morador(es)</span><strong data-open-rec-family="${E(x.id)}">Abrir domicílio ›</strong></div>
+      </article>`).join('')}</div>`;
+    document.getElementById('rec-back').onclick=renderRecadastro;
+    app.querySelectorAll('[data-open-rec-family]').forEach(b=>b.onclick=e=>{e.stopPropagation();openRecFamily(b.dataset.openRecFamily)});
+    app.querySelectorAll('[data-rec-house]').forEach(card=>card.onclick=()=>openRecFamily(card.querySelector('[data-open-rec-family]').dataset.openRecFamily));
+    document.getElementById('rec-house-search').oninput=e=>{const q=N(e.target.value);app.querySelectorAll('[data-rec-house]').forEach(el=>el.classList.toggle('hidden',!N(el.dataset.recHouse).includes(q)))};
+  }catch(e){toast(e.message,'err')}finally{busy(false)}
+}
+function recTri(label,key,val){
+  const c=v=>v===val?(v===true?'yes':v===false?'no':'unk'):'';
+  return `<div class="member"><div class="member-name">${E(label)}</div><div class="row" data-rec-field="${E(key)}" style="margin-top:8px">
+    <button class="btn ${c(true)?'teal':'gray'}" data-v="true">Sim</button><button class="btn ${c(false)?'soft':'gray'}" data-v="false">Não</button><button class="btn ${c(null)?'primary':'gray'}" data-v="null">Não confirmado</button></div></div>`;
+}
+async function openRecFamily(id){
+  busy();
+  try{
+    const j=await recApi('family',{id}),f=j.family||{},saved=j.recadastro||{},visit=j.visit||{},fam=state.families.find(x=>x.id===id),known=recKnown(fam,saved),members=fam?.members||[];
+    let status=visit.visit_status||'nao_visitado',vals={};for(const [k] of REC_FIELDS)vals[k]=known[k]??null;
+    const m=modal(`<button class="close" data-close>×</button><h2>${E(T(f.responsible_name||'Família'))}</h2>
+      <div class="sub">Família ${E(f.family_code||'—')} · ${E([f.street,f.number,f.neighborhood].filter(Boolean).join(', '))}</div>
+      <div class="section">1. Quem mora aqui hoje?</div>
+      <div class="row" id="rec-status-buttons">${Object.entries(REC_STATUS).filter(([k])=>k!=='nao_visitado').map(([k,v])=>`<button class="btn ${status===k?'primary':'gray'}" data-rec-status="${k}">${E(v)}</button>`).join('')}</div>
+      <div id="rec-same" class="${status==='mesma_familia'?'':'hidden'}">
+        <div class="section">2. Conferir moradores</div>
+        <div class="notice">${members.length?members.map(p=>E(T(p.full_name))+(p.role==='responsavel'?' · ARRIMO':'')).join('<br>'):'Integrantes ainda não carregados.'}</div>
+        <div class="form-row"><div><label>Data do recadastramento</label><input id="rec-date" type="date" value="${E(saved.data_recadastramento||today())}"></div>
+        <div><label>Nº de moradores</label><input id="rec-mor" type="number" min="0" value="${E(saved.moradores??f.member_count??'')}"></div>
+        <div><label>Nº de cômodos</label><input id="rec-com" type="number" min="1" value="${E(saved.comodos??'')}"></div>
+        <div><label>Distância da unidade (km)</label><input id="rec-dist" type="number" min="0" step="0.1" value="${E(saved.distancia_km??'')}"></div></div>
+        <div class="section">3. Condicionantes</div><div class="notice ok">Campos já conhecidos pelo Gestão aparecem pré-selecionados. Confirme ou corrija.</div>
+        <div id="rec-fields">${REC_FIELDS.map(([k,l])=>recTri(l,k,vals[k])).join('')}</div>
+      </div>
+      <div id="rec-new" class="${status==='outra_familia'?'':'hidden'}"><div class="section">Nova família encontrada</div>
+        <label>Responsável atual</label><input id="rec-new-name" value="${E(visit.current_responsible_name||'')}"><label>Nº de moradores</label><input id="rec-new-count" type="number" min="0" value="${E(visit.current_member_count??'')}"></div>
+      <div class="section">Observações</div><textarea id="rec-notes" rows="3">${E(visit.notes||'')}</textarea>
+      <button class="btn teal block" id="rec-save" style="margin-top:14px">Salvar recadastramento</button>`);
+    const setStatus=s=>{status=s;m.el.querySelectorAll('[data-rec-status]').forEach(b=>b.className='btn '+(b.dataset.recStatus===s?'primary':'gray'));m.el.querySelector('#rec-same').classList.toggle('hidden',s!=='mesma_familia');m.el.querySelector('#rec-new').classList.toggle('hidden',s!=='outra_familia')};
+    m.el.querySelectorAll('[data-rec-status]').forEach(b=>b.onclick=()=>setStatus(b.dataset.recStatus));
+    m.el.querySelectorAll('[data-rec-field]').forEach(g=>g.querySelectorAll('button').forEach(b=>b.onclick=()=>{const v=b.dataset.v==='true'?true:b.dataset.v==='false'?false:null;vals[g.dataset.recField]=v;g.querySelectorAll('button').forEach(x=>x.className='btn gray');b.className='btn '+(v===true?'teal':v===false?'soft':'primary')}));
+    m.el.querySelector('#rec-save').onclick=async()=>{
+      try{
+        busy();
+        const rec={};for(const [k] of REC_FIELDS)rec[k]=vals[k];
+        rec.data_recadastramento=m.el.querySelector('#rec-date')?.value||null;
+        rec.moradores=m.el.querySelector('#rec-mor')?.value===''?null:Number(m.el.querySelector('#rec-mor')?.value);
+        rec.comodos=m.el.querySelector('#rec-com')?.value===''?null:Number(m.el.querySelector('#rec-com')?.value);
+        rec.distancia_km=m.el.querySelector('#rec-dist')?.value===''?null:Number(m.el.querySelector('#rec-dist')?.value);
+        await recApi('save',{family_id:id,status,notes:m.el.querySelector('#rec-notes').value,current_responsible_name:status==='outra_familia'?m.el.querySelector('#rec-new-name')?.value:f.responsible_name,current_member_count:status==='outra_familia'?(m.el.querySelector('#rec-new-count')?.value===''?null:Number(m.el.querySelector('#rec-new-count')?.value)):rec.moradores,recadastro:rec,new_family:status==='outra_familia'?{responsible_name:m.el.querySelector('#rec-new-name')?.value,member_count:m.el.querySelector('#rec-new-count')?.value===''?null:Number(m.el.querySelector('#rec-new-count')?.value)}:null});
+        m.close();toast('Recadastramento salvo.');await openRecStreet(state.recadStreet.street);
+      }catch(e){toast(e.message,'err')}finally{busy(false)}
+    };
+  }catch(e){toast(e.message,'err')}finally{busy(false)}
+}
+
 function renderData(){const s=stats();const items=[['Famílias visitadas',s.visited,'visited'],['Sem visita no mês',s.pending,'pending'],['HAS',s.has,'has'],['Diabetes',s.dm,'dm'],['Acamados',s.acam,'acam'],['Domiciliados',s.dom,'dom'],['Pessoas 65+',s.a65,'a65'],['Gestantes',s.preg,'preg'],['Crianças <2',s.c2,'c2']];app.innerHTML=`<section class="hero"><h1>▮▮▮ Dados</h1><p>Indicadores calculados com a população retornada pelo Supabase.</p></section><div class="grid-kpi"><div class="kpi blue"><b>${s.people}</b><span>Pessoas ativas</span></div><div class="kpi"><b>${s.families}</b><span>Famílias vigentes</span></div><div class="kpi green"><b>${s.visited}</b><span>Famílias visitadas</span></div><div class="kpi red"><b>${s.pending}</b><span>Sem visita</span></div></div><div class="indicator-grid">${items.map(([n,v,f])=>`<button class="indicator" data-ind="${f}"><b>${v}</b><span>${E(n)}</span></button>`).join('')}</div><div class="card" style="margin-top:13px"><div class="title">Fonte</div><div class="notice ok">Dados carregados ao vivo da função <b>acs-patient-fast</b> do projeto Supabase. Nenhum paciente está embutido neste HTML.</div></div>`;app.querySelectorAll('[data-ind]').forEach(b=>b.onclick=()=>{state.filter=b.dataset.ind;state.page='families';renderNav();renderFamilies()})}
 function reportRows(filter){const fn=FILTERS[filter]?.[1]||FILTERS.all[1];return state.families.filter(fn)}
 function downloadCsv(rows,name){const escCsv=v=>'"'+String(v??'').replace(/"/g,'""')+'"',out=[['Família','Arrimo','Endereço','Status','Integrantes','Risco']].concat(rows.map(x=>[x.code,x.responsible,[x.street,x.number,x.neighborhood].filter(Boolean).join(', '),x.visited?'Visitada':'Sem visita',x.members.length,x.risk]));const blob=new Blob([out.map(r=>r.map(escCsv).join(';')).join('\n')],{type:'text/csv;charset=utf-8'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)}
@@ -79,7 +206,7 @@ function showReport(f){const rows=reportRows(f),box=document.getElementById('rep
 function renderMore(){app.innerHTML=`<section class="hero"><h1>⚙️ Mais</h1><p>Estado da conexão e manutenção da versão única.</p></section><div class="card"><div class="title">Conexão</div><div class="notice ok">✅ Supabase conectado. A população é atualizada por consulta <b>no-store</b>.</div><div class="row" style="margin-top:12px"><button class="btn teal" id="refresh-all">↻ Atualizar tudo</button><button class="btn soft" id="copy-link">Copiar link pessoal</button></div></div><div class="card"><div class="title">Produção</div><div class="sub">Arquivo único de interface · sem service worker próprio · sem lista de pacientes embutida · Supabase como fonte de verdade.</div></div>`;document.getElementById('refresh-all').onclick=async()=>{try{await loadPopulation(true);toast('Dados atualizados do Supabase.');renderMore()}catch(e){toast(e.message,'err')}};document.getElementById('copy-link').onclick=async()=>{try{await navigator.clipboard.writeText(location.href);toast('Link copiado.')}catch{toast('Não foi possível copiar.','err')}}}
 const NAV=[['families','👥','Famílias'],['recad','🏘️','Recad.'],['plan','🗓️','Planejar'],['data','▮▮▮','Dados'],['reports','📄','Relat.'],['more','⚙️','Mais']];
 function renderNav(){nav.innerHTML=NAV.map(([id,ico,label])=>`<button class="nav-btn ${state.page===id?'on':''}" data-nav="${id}"><span>${ico}</span><span>${label}</span></button>`).join('');nav.querySelectorAll('[data-nav]').forEach(b=>b.onclick=()=>{state.page=b.dataset.nav;renderNav();renderPage();scrollTo({top:0,behavior:'instant'})})}
-async function renderPage(){if(state.page==='families')return renderFamilies();if(state.page==='recad'){const u=new URL('../esf06-recadastro/',location.href);if(ACCESS)u.searchParams.set('k',ACCESS);location.href=u.href;return}if(state.page==='plan')return renderPlan();if(state.page==='data')return renderData();if(state.page==='reports')return renderReports();return renderMore()}
+async function renderPage(){if(state.page==='families')return renderFamilies();if(state.page==='recad')return renderRecadastro();if(state.page==='plan')return renderPlan();if(state.page==='data')return renderData();if(state.page==='reports')return renderReports();return renderMore()}
 async function init(){if(!ACCESS){app.innerHTML='<div class="card"><div class="title">Link pessoal necessário</div><div class="notice warn">Abra esta página com o parâmetro <b>k</b> do seu acesso pessoal.</div></div>';renderNav();return}try{busy();const [pr]=await Promise.all([api('main','profile'),loadPopulation(true)]);state.profile=pr.profile||null;document.getElementById('profile-name').textContent=T(state.profile?.full_name||'Vitor Hugo Bernardo');document.getElementById('hello').textContent=greeting()+' · Supabase conectado';renderNav();await renderPage()}catch(e){app.innerHTML=`<div class="card"><div class="title">Falha ao abrir</div><div class="notice warn">${E(e.message)}</div></div>`;toast(e.message,'err')}finally{busy(false)}}
 init();
 })();
