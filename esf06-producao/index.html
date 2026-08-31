@@ -4,41 +4,56 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#071a31">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <title>Gestão ACS 360 • ESF06</title>
 <style>
 html,body{margin:0;min-height:100%;background:#f5f8fb;font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;color:#17243b}.boot{min-height:100vh;display:grid;place-items:center;padding:24px}.box{background:#fff;border:1px solid #dfe6ed;border-radius:20px;padding:22px;max-width:420px;text-align:center;box-shadow:0 8px 28px #10233a12}.spin{width:38px;height:38px;border:4px solid #dce6ef;border-top-color:#079b88;border-radius:50%;margin:0 auto 14px;animation:s .8s linear infinite}@keyframes s{to{transform:rotate(360deg)}}
 </style>
 </head>
 <body>
-<div class="boot" id="boot"><div class="box"><div class="spin"></div><strong>Atualizando Gestão ACS 360…</strong></div></div>
+<div class="boot" id="boot"><div class="box"><div class="spin"></div><strong>Atualizando Gestão ACS 360 · R3…</strong></div></div>
 <script>
 (async()=>{
   try{
-    const r=await fetch('./base-v20260831.html?rev=20260831-1545',{cache:'no-store'});
+    const r=await fetch('./base-v20260831.html?rev=20260831-1605-r3',{cache:'no-store'});
     if(!r.ok)throw new Error('Falha ao carregar a interface');
     let h=await r.text();
 
-    const hotfix=`
-<style id="recadastro-card-hotfix">
-.status{align-self:flex-start!important;flex:0 0 auto!important;height:auto!important;min-height:0!important}
-.rec-card-actions{display:flex;flex-direction:column;align-items:flex-end;gap:9px;flex:0 0 auto}
-.rec-start{width:52px!important;height:52px!important;min-height:52px!important;min-width:52px!important;padding:0!important;border:0!important;border-radius:50%!important;background:#079b88!important;color:#fff!important;display:grid!important;place-items:center!important;font-size:25px!important;line-height:1!important;box-shadow:0 5px 14px rgba(7,155,136,.22)!important}
-.rec-start:active{transform:scale(.96)}
+    const css=`
+<style id="esf06-r3-card-fix">
+.family-top{align-items:flex-start!important}
+.status{align-self:flex-start!important;flex:0 0 auto!important;height:auto!important;min-height:0!important;max-height:none!important;width:auto!important;min-width:0!important}
+.family-card-actions,.rec-card-actions{display:flex!important;flex-direction:column!important;align-items:flex-end!important;justify-content:flex-start!important;gap:8px!important;flex:0 0 auto!important}
+.quick-recad,.rec-start{width:50px!important;height:50px!important;min-width:50px!important;min-height:50px!important;max-width:50px!important;max-height:50px!important;padding:0!important;border:0!important;border-radius:50%!important;background:#079b88!important;color:#fff!important;display:grid!important;place-items:center!important;font-size:24px!important;line-height:1!important;box-shadow:0 5px 14px rgba(7,155,136,.24)!important;cursor:pointer!important}
+.quick-recad:active,.rec-start:active{transform:scale(.96)}
+.quick-recad:focus-visible,.rec-start:focus-visible{outline:3px solid #8bb4ff!important;outline-offset:2px!important}
 @media(max-width:520px){.family-top{align-items:flex-start!important}.status{white-space:nowrap!important;text-align:center!important}}
 </style>`;
-    h=h.replace('</head>',hotfix+'</head>');
+    h=h.replace('</head>',css+'</head>');
+    h=h.replace('PRODUÇÃO · GEO','PRODUÇÃO · GEO · R3');
 
-    const marker='${recStatusBadge(x.visit_status)}</div><div class="family-foot">';
-    const replacement='<div class="rec-card-actions">${recStatusBadge(x.visit_status)}<button type="button" class="rec-start" data-open-rec-family="${E(x.id)}" aria-label="Iniciar recadastramento de ${E(T(x.responsible_name||\'família\'))}" title="Iniciar recadastramento">📝</button></div></div><div class="family-foot">';
-    if(!h.includes(marker))throw new Error('Trecho do cartão não localizado');
-    h=h.replace(marker,replacement);
+    const familyStatus='<span class="status ${x.visited?\'ok\':\'due\'}">${x.visited?\'✓ Visitada no mês\':\'● Sem visita no mês\'}</span>';
+    const familyActions='<div class="family-card-actions"><span class="status ${x.visited?\'ok\':\'due\'}">${x.visited?\'✓ Visitada no mês\':\'● Sem visita no mês\'}</span><button type="button" class="quick-recad" data-quick-recad="${E(x.id)}" aria-label="Iniciar recadastramento de ${E(T(x.responsible||x.arrimo?.full_name||\'família\'))}" title="Iniciar recadastramento">📝</button></div>';
+    if(!h.includes(familyStatus))throw new Error('Card de família não localizado');
+    h=h.replace(familyStatus,familyActions);
+
+    const familyHandlers="app.querySelectorAll('[data-family]').forEach(b=>{b.onclick=()=>openFamily(b.dataset.family);b.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();openFamily(b.dataset.family)}}});applyFamilySearch()";
+    const familyHandlersR3="app.querySelectorAll('[data-family]').forEach(b=>{b.onclick=()=>openFamily(b.dataset.family);b.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();openFamily(b.dataset.family)}}});app.querySelectorAll('[data-quick-recad]').forEach(b=>b.onclick=async e=>{e.stopPropagation();try{const x=state.families.find(z=>z.id===b.dataset.quickRecad);if(!x)throw new Error('Família não localizada');state.page='recad';renderNav();await renderRecadastro();state.recadStreet={street:x.street||''};await openRecFamily(x.id)}catch(err){toast(err.message||'Falha ao abrir recadastramento','err')}});applyFamilySearch()";
+    if(!h.includes(familyHandlers))throw new Error('Eventos dos cards não localizados');
+    h=h.replace(familyHandlers,familyHandlersR3);
+
+    const recMarker='${recStatusBadge(x.visit_status)}</div><div class="family-foot">';
+    const recReplacement='<div class="rec-card-actions">${recStatusBadge(x.visit_status)}<button type="button" class="rec-start" data-open-rec-family="${E(x.id)}" aria-label="Iniciar recadastramento de ${E(T(x.responsible_name||\'família\'))}" title="Iniciar recadastramento">📝</button></div></div><div class="family-foot">';
+    if(h.includes(recMarker))h=h.replace(recMarker,recReplacement);
 
     document.open();
     document.write(h);
     document.close();
   }catch(e){
     const box=document.querySelector('.box');
-    if(box)box.innerHTML='<strong>Não foi possível abrir o Gestão.</strong><p style="color:#708096">Atualize a página para tentar novamente.</p><button onclick="location.reload()" style="border:0;border-radius:12px;padding:12px 16px;background:#079b88;color:#fff;font-weight:800">Atualizar</button>';
+    if(box)box.innerHTML='<strong>Não foi possível abrir o Gestão R3.</strong><p style="color:#708096">Atualize a página para tentar novamente.</p><button onclick="location.reload()" style="border:0;border-radius:12px;padding:12px 16px;background:#079b88;color:#fff;font-weight:800">Atualizar</button>';
     console.error(e);
   }
 })();
