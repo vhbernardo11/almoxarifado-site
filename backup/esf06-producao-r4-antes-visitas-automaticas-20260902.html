@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#071a31">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<title>Gestão ACS 360 • ESF06</title>
+<style>
+html,body{margin:0;min-height:100%;background:#f5f8fb;font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;color:#17243b}.boot{min-height:100vh;display:grid;place-items:center;padding:24px}.box{background:#fff;border:1px solid #dfe6ed;border-radius:20px;padding:22px;max-width:420px;text-align:center;box-shadow:0 8px 28px #10233a12}.spin{width:38px;height:38px;border:4px solid #dce6ef;border-top-color:#079b88;border-radius:50%;margin:0 auto 14px;animation:s .8s linear infinite}@keyframes s{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+<div class="boot" id="boot"><div class="box"><div class="spin"></div><strong>Atualizando Gestão ACS 360 · R4 GPS…</strong></div></div>
+<script>
+(async()=>{
+  try{
+    const r=await fetch('./base-v20260831.html?rev=20260901-1055-r4',{cache:'no-store'});
+    if(!r.ok)throw new Error('Falha ao carregar a interface');
+    let h=await r.text();
+
+    const css=`
+<style id="esf06-r4-field-gps">
+.family-top{align-items:flex-start!important}
+.status{align-self:flex-start!important;flex:0 0 auto!important;height:auto!important;min-height:0!important;max-height:none!important;width:auto!important;min-width:0!important}
+.family-card-actions,.rec-card-actions{display:flex!important;flex-direction:column!important;align-items:flex-end!important;justify-content:flex-start!important;gap:8px!important;flex:0 0 auto!important}
+.quick-recad,.rec-start{width:50px!important;height:50px!important;min-width:50px!important;min-height:50px!important;max-width:50px!important;max-height:50px!important;padding:0!important;border:0!important;border-radius:50%!important;background:#079b88!important;color:#fff!important;display:grid!important;place-items:center!important;font-size:24px!important;line-height:1!important;box-shadow:0 5px 14px rgba(7,155,136,.24)!important;cursor:pointer!important}
+.quick-recad:active,.rec-start:active{transform:scale(.96)}
+.quick-recad:focus-visible,.rec-start:focus-visible{outline:3px solid #8bb4ff!important;outline-offset:2px!important}
+.geo-action{display:block!important;width:100%!important;text-align:left!important;cursor:pointer!important;font:inherit!important;min-height:0!important}
+.geo-action:active{transform:scale(.995)}
+.geo-action .geo-tap{display:inline-block;margin-top:8px;padding:5px 8px;border-radius:999px;background:#f3e5a7;color:#705600;font-size:11px;font-weight:900}
+.gps-back{position:fixed;inset:0;z-index:500;background:rgba(7,26,49,.78);display:flex;align-items:flex-end;justify-content:center;padding:12px}
+.gps-modal{width:min(100%,620px);max-height:92vh;overflow:auto;background:#fff;border-radius:25px;padding:18px;box-shadow:0 20px 60px #0016}
+.gps-modal h2{margin:0;font-size:22px}.gps-modal p{color:#708096;line-height:1.45}.gps-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin:13px 0}.gps-kpi{border:1px solid #dfe6ed;border-radius:16px;padding:12px;background:#f8fafc}.gps-kpi b{display:block;font-size:22px}.gps-kpi span{font-size:11px;color:#708096}.gps-state{padding:12px;border-radius:14px;background:#eef5ff;color:#365d8c;font-weight:800;line-height:1.4}.gps-state.good{background:#eaf9f2;color:#216c4e}.gps-state.warn{background:#fff7df;color:#7d631f}.gps-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}.gps-actions button{border:0;border-radius:13px;padding:12px;font-weight:900;min-height:48px}.gps-confirm{background:#079b88;color:#fff}.gps-map{background:#246bfd;color:#fff}.gps-retry{background:#eef2f6;color:#526176}.gps-close{background:#fff0f0;color:#a52f35}.gps-actions button:disabled{opacity:.42}
+@media(min-width:720px){.gps-back{align-items:center}}
+@media(max-width:520px){.family-top{align-items:flex-start!important}.status{white-space:nowrap!important;text-align:center!important}.gps-actions{grid-template-columns:1fr}}
+</style>`;
+    h=h.replace('</head>',css+'</head>');
+    h=h.replace('PRODUÇÃO · GEO','PRODUÇÃO · GEO · R4');
+
+    const familyStatus='<span class="status ${x.visited?\'ok\':\'due\'}">${x.visited?\'✓ Visitada no mês\':\'● Sem visita no mês\'}</span>';
+    const familyActions='<div class="family-card-actions"><span class="status ${x.visited?\'ok\':\'due\'}">${x.visited?\'✓ Visitada no mês\':\'● Sem visita no mês\'}</span><button type="button" class="quick-recad" data-quick-recad="${E(x.id)}" aria-label="Iniciar recadastramento de ${E(T(x.responsible||x.arrimo?.full_name||\'família\'))}" title="Iniciar recadastramento">📝</button></div>';
+    if(!h.includes(familyStatus))throw new Error('Card de família não localizado');
+    h=h.replace(familyStatus,familyActions);
+
+    const familyHandlers="app.querySelectorAll('[data-family]').forEach(b=>{b.onclick=()=>openFamily(b.dataset.family);b.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();openFamily(b.dataset.family)}}});applyFamilySearch()";
+    const familyHandlersR4="app.querySelectorAll('[data-family]').forEach(b=>{b.onclick=()=>openFamily(b.dataset.family);b.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();openFamily(b.dataset.family)}}});app.querySelectorAll('[data-quick-recad]').forEach(b=>b.onclick=async e=>{e.stopPropagation();try{const x=state.families.find(z=>z.id===b.dataset.quickRecad);if(!x)throw new Error('Família não localizada');state.page='recad';renderNav();await renderRecadastro();state.recadStreet={street:x.street||''};await openRecFamily(x.id)}catch(err){toast(err.message||'Falha ao abrir recadastramento','err')}});applyFamilySearch()";
+    if(!h.includes(familyHandlers))throw new Error('Eventos dos cards não localizados');
+    h=h.replace(familyHandlers,familyHandlersR4);
+
+    const recMarker='${recStatusBadge(x.visit_status)}</div><div class="family-foot">';
+    const recReplacement='<div class="rec-card-actions">${recStatusBadge(x.visit_status)}<button type="button" class="rec-start" data-open-rec-family="${E(x.id)}" aria-label="Iniciar recadastramento de ${E(T(x.responsible_name||\'família\'))}" title="Iniciar recadastramento">📝</button></div></div><div class="family-foot">';
+    if(h.includes(recMarker))h=h.replace(recMarker,recReplacement);
+
+    const geoPanelR4=[
+      "function geoPanel(x){",
+      " const m=walkM(x),min=walkMin(x);",
+      " if(m==null){const fid=E(x&&x.id?x.id:'');const gps=!!(x&&x.geo_verified);return '<button type=\"button\" class=\"geo-panel pending geo-action\" data-geo-capture-id=\"'+fid+'\"><div class=\"big\">'+(gps?'✅ GPS confirmado':'📍 Sem geolocalização')+'</div><div class=\"sub\">'+(gps?'O ponto da casa já foi confirmado. Toque para recalcular a rota a pé até a ESF 6 Pontal.':'Toque aqui estando na casa. O celular usará GPS de alta precisão, bússola e rota a pé até a ESF 6 Pontal.')+'</div><span class=\"geo-tap\">'+(gps?'Recalcular GPS/rota':'Usar minha localização agora')+'</span></button>';}",
+      " return '<div class=\"geo-panel\"><div class=\"big\">🚶 '+E(fmtWalk(m))+(min!=null?' · ~'+min+' min':'')+'</div><div class=\"sub\">Distância caminhando até a ESF 6 Pontal · '+E(geoPrecision(x))+(x&&x.geo_verified?' · confirmado':' · estimativa territorial')+'</div></div>';",
+      "}"
+    ].join('\n');
+    const geoRegex=/function geoPanel\(x\)\{[\s\S]*?\}\nfunction toast/;
+    if(!geoRegex.test(h))throw new Error('Painel de geolocalização não localizado');
+    h=h.replace(geoRegex,geoPanelR4+'\nfunction toast');
+
+    const geoRuntime='<script src="./geo-r4.js?rev=20260901-1055-r4"><\/script>';
+    h=h.replace('</body>',geoRuntime+'</body>');
+
+    document.open();
+    document.write(h);
+    document.close();
+  }catch(e){
+    const box=document.querySelector('.box');
+    if(box)box.innerHTML='<strong>Não foi possível abrir o Gestão R4.</strong><p style="color:#708096">Atualize a página para tentar novamente.</p><button onclick="location.reload()" style="border:0;border-radius:12px;padding:12px 16px;background:#079b88;color:#fff;font-weight:800">Atualizar</button>';
+    console.error(e);
+  }
+})();
+</script>
+</body>
+</html>
