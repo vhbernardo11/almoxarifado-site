@@ -51,4 +51,20 @@ window.esf06GeoCapture=function(familyId){
   start();
 };
 document.addEventListener('click',function(e){var b=e.target&&e.target.closest?e.target.closest('[data-geo-capture-id]'):null;if(!b)return;e.preventDefault();e.stopPropagation();window.esf06GeoCapture(b.getAttribute('data-geo-capture-id'));},true);
+
+function markAutoVisits(){
+  var b=document.getElementById('rec-save');
+  if(!b)return;
+  if(b.textContent.indexOf('+ visitas')<0)b.textContent='Salvar recadastramento + visitas';
+  if(!document.getElementById('rec-auto-visits-note')){
+    var n=document.createElement('div');
+    n.id='rec-auto-visits-note';
+    n.className='notice ok';
+    n.style.marginTop='12px';
+    n.innerHTML='<b>Visitas automáticas ativadas.</b><br>Ao salvar “Mesma família”, o Gestão registra uma visita domiciliar local para o arrimo e todos os familiares ativos. Se a pessoa já tiver visita realizada na mesma data, não duplica. Os registros ficam como pendentes de lançamento no MIKA.';
+    b.parentNode.insertBefore(n,b);
+  }
+}
+markAutoVisits();
+new MutationObserver(markAutoVisits).observe(document.documentElement,{childList:true,subtree:true});
 })();
