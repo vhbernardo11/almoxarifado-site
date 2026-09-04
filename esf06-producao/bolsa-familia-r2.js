@@ -5,7 +5,7 @@ const state={families:new Map(),observer:null};
 function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 function title(s){return String(s||'').toLocaleLowerCase('pt-BR').replace(/(^|\s|[-'’])\p{L}/gu,m=>m.toLocaleUpperCase('pt-BR'))}
 function norm(s){return String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase()}
-function age(b){if(!b)return null;const d=new Date(b+'T12:00:00'),n=new Date();let a=n.getFullYear()-d.getFullYear();const m=n.getMonth()-d.getMonth();if(m<0||(m===0&&n.getDate()<b.getDate()))a--;return a}
+function age(b){if(!b)return null;const d=new Date(b+'T12:00:00'),n=new Date();let a=n.getFullYear()-d.getFullYear();const m=n.getMonth()-d.getMonth();if(m<0||(m===0&&n.getDate()<d.getDate()))a--;return a}
 function female(p){const s=norm(p?.sex);return s==='f'||s==='feminino'||s.startsWith('fem')||s==='female'}
 async function api(name,{method='GET',body=null,params={}}={}){const u=new URL(FN);u.searchParams.set('api',name);u.searchParams.set('k',ACCESS);for(const [k,v] of Object.entries(params||{}))if(v!=null)u.searchParams.set(k,String(v));const r=await fetch(u,{method,headers:body?{'Content-Type':'application/json'}:undefined,body:body?JSON.stringify(body):undefined,cache:'no-store'});const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.error||'Falha ao acessar Bolsa Família');return j}
 function style(){if(document.getElementById('pbf-r2-style'))return;const s=document.createElement('style');s.id='pbf-r2-style';s.textContent=`
