@@ -13,7 +13,7 @@ html,body{margin:0;min-height:100%;background:#f5f8fb;font-family:system-ui,-app
 </style>
 </head>
 <body>
-<div class="boot" id="boot"><div class="box"><div class="spin"></div><strong>Atualizando Gestão ACS 360 · R6 Cadastro auditável…</strong></div></div>
+<div class="boot" id="boot"><div class="box"><div class="spin"></div><strong>Atualizando Gestão ACS 360 · R7 Cômodos obrigatório…</strong></div></div>
 <script>
 (async()=>{
   try{
@@ -40,7 +40,7 @@ html,body{margin:0;min-height:100%;background:#f5f8fb;font-family:system-ui,-app
 @media(max-width:520px){.family-top{align-items:flex-start!important}.status{white-space:nowrap!important;text-align:center!important}.gps-actions{grid-template-columns:1fr}.rec-member-actions{grid-template-columns:1fr}}
 </style>`;
     h=h.replace('</head>',css+'</head>');
-    h=h.replace('PRODUÇÃO · GEO','PRODUÇÃO · GEO · R6');
+    h=h.replace('PRODUÇÃO · GEO','PRODUÇÃO · GEO · R7');
 
     const familyStatus='<span class="status ${x.visited?\'ok\':\'due\'}">${x.visited?\'✓ Visitada no mês\':\'● Sem visita no mês\'}</span>';
     const familyActions='<div class="family-card-actions"><span class="status ${x.visited?\'ok\':\'due\'}">${x.visited?\'✓ Visitada no mês\':\'● Sem visita no mês\'}</span><button type="button" class="quick-recad" data-quick-recad="${E(x.id)}" aria-label="Iniciar recadastramento de ${E(T(x.responsible||x.arrimo?.full_name||\'família\'))}" title="Iniciar recadastramento">📝</button></div>';
@@ -82,7 +82,7 @@ html,body{margin:0;min-height:100%;background:#f5f8fb;font-family:system-ui,-app
     if(!h.includes(personModalMarker))throw new Error('Ficha da pessoa não localizada');
     h=h.replace(personModalMarker,personModalReplacement);
 
-    const runtimes='<script src="./audit-edit-r6.js?rev=20260904-0925-r6"><\/script><script src="./recad-members-r5.js?rev=20260904-0925-r6"><\/script><script src="./geo-r4.js?rev=20260904-0925-r6"><\/script>';
+    const runtimes='<script src="./audit-edit-r6.js?rev=20260904-0925-r6"><\/script><script src="./recad-members-r5.js?rev=20260904-0925-r6"><\/script><script src="./recad-comodos-r7.js?rev=20260904-1013-r7"><\/script><script src="./geo-r4.js?rev=20260904-0925-r6"><\/script>';
     h=h.replace('</body>',runtimes+'</body>');
 
     document.open();
@@ -90,7 +90,7 @@ html,body{margin:0;min-height:100%;background:#f5f8fb;font-family:system-ui,-app
     document.close();
   }catch(e){
     const box=document.querySelector('.box');
-    if(box)box.innerHTML='<strong>Não foi possível abrir o Gestão R6.</strong><p style="color:#708096">Atualize a página para tentar novamente.</p><button onclick="location.reload()" style="border:0;border-radius:12px;padding:12px 16px;background:#079b88;color:#fff;font-weight:800">Atualizar</button>';
+    if(box)box.innerHTML='<strong>Não foi possível abrir o Gestão R7.</strong><p style="color:#708096">Atualize a página para tentar novamente.</p><button onclick="location.reload()" style="border:0;border-radius:12px;padding:12px 16px;background:#079b88;color:#fff;font-weight:800">Atualizar</button>';
     console.error(e);
   }
 })();
