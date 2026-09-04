@@ -1,0 +1,1 @@
+(()=>{'use strict';const s=document.createElement('script');s.src='./bolsa-familia-r3.js?rev=20260904-1652-r3';s.async=false;s.onload=()=>{const f=document.createElement('script');f.src='./bolsa-familia-filter-r1.js?rev=20260904-1759-r1';f.async=false;document.head.appendChild(f)};document.head.appendChild(s)})();
