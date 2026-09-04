@@ -95,3 +95,12 @@ document.addEventListener('click',function(e){
 new MutationObserver(scan).observe(document.documentElement,{childList:true,subtree:true});
 scan();
 })();
+
+(function(){
+  if(document.getElementById('visit-notes-r8-script'))return;
+  var s=document.createElement('script');
+  s.id='visit-notes-r8-script';
+  s.src='./visit-notes-r8.js?rev=20260904-1135-r8';
+  s.async=true;
+  document.head.appendChild(s);
+})();
