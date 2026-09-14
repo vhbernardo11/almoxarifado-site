@@ -8,7 +8,7 @@ function digits(v){return String(v||'').replace(/\D/g,'')}
 function waNumber(v){let d=digits(v);if(!d)return'';if(d.startsWith('55')&&(d.length===12||d.length===13))return d;if(d.length===10||d.length===11)return'55'+d;return''}
 function pretty(v){let d=digits(v);if(d.startsWith('55')&&d.length>=12)d=d.slice(2);if(d.length===11)return`(${d.slice(0,2)}) ${d.slice(2,7)}-${d.slice(7)}`;if(d.length===10)return`(${d.slice(0,2)}) ${d.slice(2,6)}-${d.slice(6)}`;return String(v||'')}
 function isConfirmed(row){const f=row&&row.flags&&typeof row.flags==='object'?row.flags:{};return f.whatsapp_confirmed===true||String(f.whatsapp_confirmed||'').toLowerCase()==='true'}
-function confirmedPhone(row){const f=row&&row.flags&&typeof row.flags==='object'?row.flags:{};return f.whatsapp_phone||row.phone||''}
+function phoneFor(row){const f=row&&row.flags&&typeof row.flags==='object'?row.flags:{};return isConfirmed(row)?(f.whatsapp_phone||row.phone||''):(row.phone||'')}
 
 function style(){
   if(document.getElementById('route-wa-r1-style'))return;
@@ -16,8 +16,11 @@ function style(){
   s.id='route-wa-r1-style';
   s.textContent=`
 .route-head{align-items:flex-start!important}
-.route-wa-btn{width:38px!important;height:38px!important;min-width:38px!important;min-height:38px!important;flex:0 0 38px!important;margin-left:4px!important;border:0!important;border-radius:12px!important;background:#25D366!important;color:#fff!important;display:grid!important;place-items:center!important;text-decoration:none!important;box-shadow:0 4px 12px rgba(37,211,102,.24)!important;align-self:flex-start!important;line-height:1!important}
+.route-wa-btn{position:relative!important;width:38px!important;height:38px!important;min-width:38px!important;min-height:38px!important;flex:0 0 38px!important;margin-left:4px!important;border-radius:12px!important;display:grid!important;place-items:center!important;text-decoration:none!important;align-self:flex-start!important;line-height:1!important;transition:transform .12s ease,box-shadow .12s ease!important}
 .route-wa-btn svg{width:21px!important;height:21px!important;display:block!important;fill:currentColor!important}
+.route-wa-btn.is-confirmed{border:0!important;background:#25D366!important;color:#fff!important;box-shadow:0 4px 12px rgba(37,211,102,.24)!important}
+.route-wa-btn.is-phone-only{border:1.5px solid #25D366!important;background:#fff!important;color:#1fa855!important;box-shadow:0 3px 10px rgba(31,168,85,.10)!important}
+.route-wa-btn.is-phone-only::after{content:'?';position:absolute;right:-4px;top:-5px;width:15px;height:15px;border-radius:999px;background:#f3a712;color:#fff;font:800 10px/15px system-ui,-apple-system,'Segoe UI',sans-serif;text-align:center;box-shadow:0 1px 4px rgba(0,0,0,.18)}
 .route-wa-btn:active{transform:scale(.95)}
 .route-wa-btn:focus-visible{outline:3px solid #8bb4ff!important;outline-offset:2px!important}
 @media(max-width:520px){.route-wa-btn{width:36px!important;height:36px!important;min-width:36px!important;min-height:36px!important;flex-basis:36px!important;border-radius:11px!important}.route-wa-btn svg{width:20px!important;height:20px!important}}
@@ -28,10 +31,10 @@ function style(){
 function loadContacts(rows){
   contacts.clear();
   for(const row of rows||[]){
-    if(!row||!row.id||!isConfirmed(row))continue;
-    const raw=confirmedPhone(row),num=waNumber(raw);
+    if(!row||!row.id)continue;
+    const raw=phoneFor(row),num=waNumber(raw);
     if(!num)continue;
-    contacts.set(String(row.id),{num,raw,name:row.full_name||'Paciente'});
+    contacts.set(String(row.id),{num,raw,name:row.full_name||'Paciente',confirmed:isConfirmed(row)});
   }
 }
 
@@ -50,13 +53,18 @@ function enhance(){
     const head=card.querySelector('.route-head');
     if(!head)return;
     const a=document.createElement('a');
-    a.className='route-wa-btn';
+    a.className='route-wa-btn '+(info.confirmed?'is-confirmed':'is-phone-only');
     a.dataset.routeWa=pid;
     a.href='https://wa.me/'+info.num;
     a.target='_blank';
     a.rel='noopener noreferrer';
-    a.setAttribute('aria-label',`Abrir WhatsApp confirmado de ${info.name} no número ${pretty(info.raw)}`);
-    a.title=`WhatsApp confirmado · ${pretty(info.raw)}`;
+    if(info.confirmed){
+      a.setAttribute('aria-label',`Abrir WhatsApp confirmado de ${info.name} no número ${pretty(info.raw)}`);
+      a.title=`WhatsApp confirmado · ${pretty(info.raw)}`;
+    }else{
+      a.setAttribute('aria-label',`Testar número cadastrado de ${info.name} no WhatsApp: ${pretty(info.raw)}`);
+      a.title=`Telefone cadastrado · WhatsApp não confirmado · ${pretty(info.raw)}`;
+    }
     a.innerHTML=icon();
     a.addEventListener('click',e=>e.stopPropagation());
     a.addEventListener('keydown',e=>e.stopPropagation());
