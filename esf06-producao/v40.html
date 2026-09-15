@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<meta name="theme-color" content="#071a31">
+<title>Gestão ACS 360 • V40</title>
+<style>
+html,body{margin:0;min-height:100%;background:#f5f8fb;font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;color:#17243b}
+.boot{min-height:100vh;display:grid;place-items:center;padding:24px}
+.box{background:#fff;border:1px solid #dfe6ed;border-radius:20px;padding:22px;max-width:420px;text-align:center;box-shadow:0 8px 28px #10233a12}
+.spin{width:38px;height:38px;border:4px solid #dce6ef;border-top-color:#079b88;border-radius:50%;margin:0 auto 14px;animation:s .8s linear infinite}@keyframes s{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+<div class="boot"><div class="box"><div class="spin"></div><strong>Carregando Gestão ACS 360 · V40…</strong><p style="color:#708096">Versão móvel com Régua ACS, agendamento e formulário do recém-nascido.</p></div></div>
+<script>
+(async()=>{
+ try{
+   const r=await fetch('./index.html?force=20260915-1040-v40',{cache:'no-store'});
+   if(!r.ok)throw new Error('Falha ao carregar a aplicação');
+   let h=await r.text();
+
+   h=h.replaceAll('PRODUÇÃO · GEO · R7','PRODUÇÃO · GEO · V40');
+   h=h.replaceAll("PRODUÇÃO · GEO','PRODUÇÃO · GEO · R7","PRODUÇÃO · GEO','PRODUÇÃO · GEO · V40");
+   h=h.replaceAll('bolsa-familia-r1.js?rev=20260904-1342-r1','bolsa-familia-r1.js?rev=20260915-1040-v40');
+   h=h.replaceAll('route-whatsapp-r1.js?rev=20260914-0752-r1','route-whatsapp-r1.js?rev=20260914-1415-r2');
+   h=h.replaceAll('family-whatsapp-r1.js?rev=20260904-1904-r1','family-whatsapp-r1.js?rev=20260914-1415-r8');
+
+   const extras=[
+     '<script src="./visit-regua-r9.js?rev=20260915-1040-v40"><\\/script>',
+     '<script src="./visit-regua-schedule-r10.js?rev=20260915-1040-v40"><\\/script>',
+     '<script src="./rn-visit-r1.js?rev=20260915-1040-v40"><\\/script>'
+   ].join('');
+   h=h.replace('</body>',extras+'</body>');
+   h=h.replace('</head>','<script>document.addEventListener("DOMContentLoaded",()=>{const v=document.querySelector(".version");if(v)v.textContent="PRODUÇÃO · GEO · V40"})<\\/script></head>');
+
+   document.open();
+   document.write(h);
+   document.close();
+ }catch(e){
+   document.body.innerHTML='<div class="boot"><div class="box"><strong>Não foi possível abrir a V40.</strong><p style="color:#708096">Atualize a página para tentar novamente.</p><button onclick="location.reload()" style="border:0;border-radius:12px;padding:12px 16px;background:#079b88;color:#fff;font-weight:800">Atualizar</button></div></div>';
+   console.error(e);
+ }
+})();
+</script>
+</body>
+</html>
