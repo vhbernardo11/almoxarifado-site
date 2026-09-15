@@ -15,7 +15,7 @@
 <script>
 (async()=>{
  try{
-   const r=await fetch('./index.html?force=20260915-0830-r9',{cache:'no-store'});
+   const r=await fetch('./index.html?force=20260915-0845-r9-agenda',{cache:'no-store'});
    if(!r.ok)throw new Error('Falha ao carregar a aplicação');
    let h=await r.text();
    h=h.replaceAll("PRODUÇÃO · GEO · R7","PRODUÇÃO · GEO · R9");
@@ -24,7 +24,7 @@
    h=h.replaceAll('route-whatsapp-r1.js?rev=20260914-0752-r1','route-whatsapp-r1.js?rev=20260914-1415-r2');
    h=h.replaceAll('family-whatsapp-r1.js?rev=20260904-1904-r1','family-whatsapp-r1.js?rev=20260914-1415-r8');
    const hook='<script src="./bolsa-familia-r1.js?rev=20260915-0830-r9"><\\/script>';
-   const hook2=hook+'<script src="./visit-regua-r9.js?rev=20260915-0830-r9"><\\/script>';
+   const hook2=hook+'<script src="./visit-regua-r9.js?rev=20260915-0830-r9"><\\/script><script src="./visit-regua-schedule-r10.js?rev=20260915-0845-r10"><\\/script>';
    if(h.includes(hook))h=h.replace(hook,hook2);
    h=h.replace('</head>','<script>document.addEventListener("DOMContentLoaded",()=>{const v=document.querySelector(".version");if(v)v.textContent="PRODUÇÃO · GEO · R9"})<\/script></head>');
    document.open();document.write(h);document.close();
