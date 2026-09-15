@@ -8,56 +8,32 @@
 <meta http-equiv="Expires" content="0">
 <meta name="theme-color" content="#071a31">
 <title>Gestão ACS 360 • R9</title>
-<style>
-html,body{margin:0;width:100%;height:100%;background:#071a31;font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif}
-#appframe{display:block;width:100%;height:100%;border:0;background:#f5f8fb}
-#boot{position:fixed;inset:0;z-index:10;display:grid;place-items:center;padding:24px;background:#f5f8fb;color:#17243b}
-.box{background:#fff;border:1px solid #dfe6ed;border-radius:20px;padding:22px;max-width:430px;text-align:center;box-shadow:0 8px 28px #10233a12}
-.spin{width:38px;height:38px;border:4px solid #dce6ef;border-top-color:#079b88;border-radius:50%;margin:0 auto 14px;animation:s .8s linear infinite}@keyframes s{to{transform:rotate(360deg)}}
-#keybox{display:none}.keyinput{width:100%;box-sizing:border-box;border:1px solid #cbd5df;border-radius:12px;padding:12px;font-size:16px;margin:12px 0}.btn{border:0;border-radius:12px;padding:12px 16px;background:#079b88;color:white;font-weight:800;cursor:pointer}
-.err{color:#9d2e36;margin-top:10px}
-</style>
+<style>html,body{margin:0;min-height:100%;background:#f5f8fb;font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;color:#17243b}.boot{min-height:100vh;display:grid;place-items:center;padding:24px}.box{background:#fff;border:1px solid #dfe6ed;border-radius:20px;padding:22px;max-width:430px;text-align:center;box-shadow:0 8px 28px #10233a12}.spin{width:38px;height:38px;border:4px solid #dce6ef;border-top-color:#079b88;border-radius:50%;margin:0 auto 14px;animation:s .8s linear infinite}@keyframes s{to{transform:rotate(360deg)}}.err{color:#9d2e36;line-height:1.45}</style>
 </head>
 <body>
-<div id="boot"><div class="box"><div class="spin" id="spin"></div><strong id="msg">Abrindo Gestão ACS 360 · R9…</strong><div id="keybox"><p>Digite sua chave de acesso do programa.</p><input id="key" class="keyinput" autocomplete="off" spellcheck="false" placeholder="Cole aqui sua chave k"><button class="btn" id="enter">Entrar</button><div id="err" class="err"></div></div></div></div>
-<iframe id="appframe" title="Gestão ACS 360"></iframe>
+<div class="boot"><div class="box"><div class="spin"></div><strong>Carregando Gestão ACS 360 · R9…</strong><p style="color:#708096">Abrindo a versão corrigida.</p></div></div>
 <script>
-(()=>{
- const qs=new URLSearchParams(location.search), boot=document.getElementById('boot'), frame=document.getElementById('appframe');
- const keybox=document.getElementById('keybox'), key=document.getElementById('key'), enter=document.getElementById('enter'), msg=document.getElementById('msg'), spin=document.getElementById('spin'), err=document.getElementById('err');
- const storageKey='esf06_access_k';
- let k=(qs.get('k')||'').trim();
- try{ if(k) localStorage.setItem(storageKey,k); else k=(localStorage.getItem(storageKey)||'').trim(); }catch(e){}
- function askKey(text){spin.style.display='none';msg.textContent=text||'Chave de acesso necessária';keybox.style.display='block';boot.style.display='grid';}
- function start(){
-   if(!k){askKey();return;}
-   const p=new URLSearchParams(location.search);p.set('k',k);p.set('_r9','20260915-0945');
-   frame.src='./index.html?'+p.toString();
-   const timer=setTimeout(()=>{msg.textContent='Ainda carregando… Se demorar, tente atualizar a página.'},12000);
-   frame.onload=()=>{
-     clearTimeout(timer);
-     try{
-       const d=frame.contentDocument;
-       if(!d)throw new Error('Interface não acessível');
-       const scripts=[
-         ['./visit-regua-r9.js','20260915-0830-r9'],
-         ['./visit-regua-schedule-r10.js','20260915-0845-r10'],
-         ['./rn-visit-r1.js','20260915-0930-r1']
-       ];
-       scripts.forEach(([src,rev])=>{if(!d.querySelector('script[src^="'+src+'"]')){const s=d.createElement('script');s.src=src+'?rev='+rev;d.body.appendChild(s);}});
-       const v=d.querySelector('.version');if(v)v.textContent='PRODUÇÃO · GEO · R9';
-       boot.style.display='none';
-     }catch(e){
-       console.error(e);
-       msg.textContent='Falha ao abrir a interface.';spin.style.display='none';
-       err.textContent='Atualize a página. Se continuar, informe a mensagem que aparece dentro do programa.';
-       keybox.style.display='block';
-     }
-   };
+(async()=>{
+ try{
+   const r=await fetch('./index.html?force=20260915-1018-r9-fix2',{cache:'no-store'});
+   if(!r.ok)throw new Error('Falha ao carregar a aplicação ('+r.status+')');
+   let h=await r.text();
+   h=h.replaceAll("PRODUÇÃO · GEO · R7","PRODUÇÃO · GEO · R9");
+   h=h.replaceAll("PRODUÇÃO · GEO','PRODUÇÃO · GEO · R7","PRODUÇÃO · GEO','PRODUÇÃO · GEO · R9");
+   h=h.replaceAll('bolsa-familia-r1.js?rev=20260904-1342-r1','bolsa-familia-r1.js?rev=20260915-0830-r9');
+   h=h.replaceAll('route-whatsapp-r1.js?rev=20260914-0752-r1','route-whatsapp-r1.js?rev=20260914-1415-r2');
+   h=h.replaceAll('family-whatsapp-r1.js?rev=20260904-1904-r1','family-whatsapp-r1.js?rev=20260914-1415-r8');
+   const extras=[];
+   if(!h.includes('visit-regua-r9.js')) extras.push('<script src="./visit-regua-r9.js?rev=20260915-0830-r9"><\\/script>');
+   if(!h.includes('visit-regua-schedule-r10.js')) extras.push('<script src="./visit-regua-schedule-r10.js?rev=20260915-0845-r10"><\\/script>');
+   if(!h.includes('rn-visit-r1.js')) extras.push('<script src="./rn-visit-r1.js?rev=20260915-0930-r1"><\\/script>');
+   if(extras.length) h=h.replace('</body>',extras.join('')+'</body>');
+   h=h.replace('</head>','<script>document.addEventListener("DOMContentLoaded",()=>{const v=document.querySelector(".version");if(v)v.textContent="PRODUÇÃO · GEO · R9"})<\/script></head>');
+   document.open();document.write(h);document.close();
+ }catch(e){
+   console.error(e);
+   document.body.innerHTML='<div class="boot"><div class="box"><strong>Não foi possível abrir o Gestão ACS 360.</strong><p class="err">'+String(e&&e.message?e.message:e)+'</p><p style="color:#708096">Tente Ctrl+F5. Se persistir, use o link principal abaixo.</p><button onclick="location.href=\'./index.html\'+location.search" style="border:0;border-radius:12px;padding:12px 16px;background:#079b88;color:#fff;font-weight:800;cursor:pointer">Abrir versão principal</button></div></div>';
  }
- enter.onclick=()=>{const v=(key.value||'').trim();if(v.length<20){err.textContent='A chave parece incompleta.';return;}k=v;try{localStorage.setItem(storageKey,k)}catch(e){}const p=new URLSearchParams(location.search);p.set('k',k);history.replaceState(null,'',location.pathname+'?'+p.toString());keybox.style.display='none';spin.style.display='block';msg.textContent='Abrindo Gestão ACS 360 · R9…';err.textContent='';start();};
- key.addEventListener('keydown',e=>{if(e.key==='Enter')enter.click()});
- start();
 })();
 </script>
 </body>
