@@ -20,23 +20,29 @@ html,body{margin:0;min-height:100%;background:#f5f8fb;font-family:system-ui,-app
 <script>
 (async()=>{
  try{
-   const r=await fetch('./index.html?force=20260915-1040-v40',{cache:'no-store'});
+   const r=await fetch('./index.html?force=20260915-1050-v40',{cache:'no-store'});
    if(!r.ok)throw new Error('Falha ao carregar a aplicação');
    let h=await r.text();
 
    h=h.replaceAll('PRODUÇÃO · GEO · R7','PRODUÇÃO · GEO · V40');
    h=h.replaceAll("PRODUÇÃO · GEO','PRODUÇÃO · GEO · R7","PRODUÇÃO · GEO','PRODUÇÃO · GEO · V40");
-   h=h.replaceAll('bolsa-familia-r1.js?rev=20260904-1342-r1','bolsa-familia-r1.js?rev=20260915-1040-v40');
+   h=h.replaceAll('bolsa-familia-r1.js?rev=20260904-1342-r1','bolsa-familia-r1.js?rev=20260915-1050-v40');
    h=h.replaceAll('route-whatsapp-r1.js?rev=20260914-0752-r1','route-whatsapp-r1.js?rev=20260914-1415-r2');
    h=h.replaceAll('family-whatsapp-r1.js?rev=20260904-1904-r1','family-whatsapp-r1.js?rev=20260914-1415-r8');
 
    const extras=[
-     '<script src="./visit-regua-r9.js?rev=20260915-1040-v40"><\\/script>',
-     '<script src="./visit-regua-schedule-r10.js?rev=20260915-1040-v40"><\\/script>',
-     '<script src="./rn-visit-r1.js?rev=20260915-1040-v40"><\\/script>'
+     '<script src="./visit-regua-r9.js?rev=20260915-1050-v40"><\\/script>',
+     '<script src="./visit-regua-schedule-r10.js?rev=20260915-1050-v40"><\\/script>',
+     '<script src="./rn-visit-r1.js?rev=20260915-1050-v40"><\\/script>'
    ].join('');
-   h=h.replace('</body>',extras+'</body>');
-   h=h.replace('</head>','<script>document.addEventListener("DOMContentLoaded",()=>{const v=document.querySelector(".version");if(v)v.textContent="PRODUÇÃO · GEO · V40"})<\\/script></head>');
+   const bodyClose=h.lastIndexOf('</body>');
+   if(bodyClose<0)throw new Error('Fechamento da página não localizado');
+   h=h.slice(0,bodyClose)+extras+h.slice(bodyClose);
+
+   const headClose=h.indexOf('</head>');
+   if(headClose<0)throw new Error('Cabeçalho da página não localizado');
+   const versionScript='<script>document.addEventListener("DOMContentLoaded",()=>{const v=document.querySelector(".version");if(v)v.textContent="PRODUÇÃO · GEO · V40"})<\\/script>';
+   h=h.slice(0,headClose)+versionScript+h.slice(headClose);
 
    document.open();
    document.write(h);
