@@ -11,11 +11,11 @@
 <style>html,body{margin:0;min-height:100%;background:#f5f8fb;font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;color:#17243b}.boot{min-height:100vh;display:grid;place-items:center;padding:24px}.box{background:#fff;border:1px solid #dfe6ed;border-radius:20px;padding:22px;max-width:420px;text-align:center;box-shadow:0 8px 28px #10233a12}.spin{width:38px;height:38px;border:4px solid #dce6ef;border-top-color:#079b88;border-radius:50%;margin:0 auto 14px;animation:s .8s linear infinite}@keyframes s{to{transform:rotate(360deg)}}</style>
 </head>
 <body>
-<div class="boot"><div class="box"><div class="spin"></div><strong>Carregando Gestão ACS 360 · R8…</strong><p style="color:#708096">Forçando a versão mais recente.</p></div></div>
+<div class="boot"><div class="box"><div class="spin"></div><strong>Carregando Gestão ACS 360 · R8…</strong><p style="color:#708096">Ativando Régua ACS e formulário do recém-nascido.</p></div></div>
 <script>
 (async()=>{
  try{
-   const r=await fetch('./index.html?force=20260915-0845-r8-agenda',{cache:'no-store'});
+   const r=await fetch('./index.html?force=20260915-0930-r8-rn',{cache:'no-store'});
    if(!r.ok)throw new Error('Falha ao carregar a aplicação');
    let h=await r.text();
    h=h.replaceAll("PRODUÇÃO · GEO · R7","PRODUÇÃO · GEO · R8");
@@ -24,7 +24,7 @@
    h=h.replaceAll('route-whatsapp-r1.js?rev=20260914-0752-r1','route-whatsapp-r1.js?rev=20260914-1415-r2');
    h=h.replaceAll('family-whatsapp-r1.js?rev=20260904-1904-r1','family-whatsapp-r1.js?rev=20260914-1415-r8');
    const hook='<script src="./bolsa-familia-r1.js?rev=20260914-1415-r8"><\\/script>';
-   const hook2=hook+'<script src="./visit-regua-r9.js?rev=20260915-0830-r9"><\\/script><script src="./visit-regua-schedule-r10.js?rev=20260915-0845-r10"><\\/script>';
+   const hook2=hook+'<script src="./visit-regua-r9.js?rev=20260915-0830-r9"><\\/script><script src="./visit-regua-schedule-r10.js?rev=20260915-0845-r10"><\\/script><script src="./rn-visit-r1.js?rev=20260915-0930-r1"><\\/script>';
    if(h.includes(hook))h=h.replace(hook,hook2);
    h=h.replace('</head>','<script>document.addEventListener("DOMContentLoaded",()=>{const v=document.querySelector(".version");if(v)v.textContent="PRODUÇÃO · GEO · R8"})<\/script></head>');
    document.open();document.write(h);document.close();
