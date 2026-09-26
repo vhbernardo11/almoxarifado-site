@@ -1,0 +1,17 @@
+(()=>{
+'use strict';
+const VERSION='V41', LEDI='8.7.0';
+function esc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function mount(){
+ if(document.getElementById('esus-v41-btn'))return;
+ const style=document.createElement('style');style.id='esus-v41-style';style.textContent=`
+#esus-v41-btn{position:fixed;right:14px;bottom:78px;z-index:430;border:0;border-radius:999px;background:#071a31;color:#fff;padding:11px 14px;font:800 12px system-ui;box-shadow:0 8px 24px #0015;cursor:pointer}
+#esus-v41-btn b{color:#66e0ca}.esus41-back{position:fixed;inset:0;z-index:700;background:#071a31cc;display:grid;place-items:end center;padding:12px}.esus41-card{width:min(100%,620px);max-height:90vh;overflow:auto;background:#fff;border-radius:24px;padding:18px;box-sizing:border-box}.esus41-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}.esus41-head h2{margin:0}.esus41-x{border:0;background:#eef2f6;border-radius:50%;width:40px;height:40px;font-size:22px}.esus41-state{margin:15px 0;padding:14px;border-radius:16px;background:#fff7df;color:#705600;font-weight:800}.esus41-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px}.esus41-kpi{border:1px solid #dfe6ed;border-radius:15px;padding:12px}.esus41-kpi b{display:block;font-size:16px}.esus41-kpi span{font-size:11px;color:#708096}.esus41-note{margin-top:14px;color:#526176;line-height:1.45;font-size:13px}.esus41-ok{color:#087866;font-weight:900}@media(min-width:720px){.esus41-back{place-items:center}}@media(max-width:520px){.esus41-grid{grid-template-columns:1fr}}
+`;document.head.appendChild(style);
+ const b=document.createElement('button');b.id='esus-v41-btn';b.type='button';b.innerHTML='e-SUS <b>PREPARADO</b>';b.onclick=open;document.body.appendChild(b);
+}
+function open(){
+ const d=document.createElement('div');d.className='esus41-back';d.innerHTML=`<section class="esus41-card" role="dialog" aria-modal="true" aria-label="Integração e-SUS APS"><div class="esus41-head"><div><h2>Integração e-SUS APS</h2><div style="color:#708096;font-size:12px;margin-top:4px">Gestão ACS 360 · ${VERSION}</div></div><button class="esus41-x" aria-label="Fechar">×</button></div><div class="esus41-state">🔒 Transmissão desativada com segurança.<br><small>O endereço do PEC e as credenciais ainda precisam ser validados.</small></div><div class="esus41-grid"><div class="esus41-kpi"><span>Padrão preparado</span><b>LEDI ${esc(LEDI)}</b></div><div class="esus41-kpi"><span>Origem</span><b>Sistema terceiro · 3</b></div><div class="esus41-kpi"><span>Cadastro Individual</span><b class="esus41-ok">Preparado</b></div><div class="esus41-kpi"><span>Cadastro Domiciliar</span><b class="esus41-ok">Preparado</b></div><div class="esus41-kpi"><span>Visita Domiciliar</span><b class="esus41-ok">Preparado</b></div><div class="esus41-kpi"><span>Endpoint PEC</span><b>A descobrir</b></div></div><p class="esus41-note">A V41 adiciona a camada visual da integração direta. O backend já possui configuração, vínculos de cadastro, fila idempotente e auditoria de tentativas. Nenhum registro será enviado até a integração ser habilitada explicitamente.</p></section>`;d.querySelector('.esus41-x').onclick=()=>d.remove();d.onclick=e=>{if(e.target===d)d.remove()};document.body.appendChild(d);
+}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',mount);else mount();
+})();
