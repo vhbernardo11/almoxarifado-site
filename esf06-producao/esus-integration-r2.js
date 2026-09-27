@@ -35,7 +35,7 @@ function saveLastTest(value){
 
 function formatDate(value){
   if(!value)return 'Ainda não executado neste aparelho';
-  try{return new Intl.DateTimeFormat('pt-BR',{dateStyle:'short',timeStyle:'medium'}).format(new Date(value))}
+  try{return new Intl.DateTimeFormat('pt-BR',{dateStyle:'short',timeStyle:'medium',timeZone:'America/Sao_Paulo'}).format(new Date(value))}
   catch(_error){return String(value)}
 }
 
