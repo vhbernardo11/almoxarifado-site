@@ -23,8 +23,9 @@
    h=h.replaceAll('bolsa-familia-r1.js?rev=20260904-1342-r1','bolsa-familia-r1.js?rev=20260914-1415-r8');
    h=h.replaceAll('route-whatsapp-r1.js?rev=20260914-0752-r1','route-whatsapp-r1.js?rev=20260914-1415-r2');
    h=h.replaceAll('family-whatsapp-r1.js?rev=20260904-1904-r1','family-whatsapp-r1.js?rev=20260914-1415-r8');
-   const hook='<script src="./bolsa-familia-r1.js?rev=20260914-1415-r8"><\/script>';
-   const hook2=hook+'<script src="./visit-regua-r9.js?rev=20260915-1100-v40"><\/script><script src="./visit-regua-schedule-r10.js?rev=20260915-1100-v40"><\/script><script src="./rn-visit-r1.js?rev=20260915-1100-v40"><\/script><script src="./esus-integration-r2.js?rev=20260927-0830-v41"><\/script>';
+   const escapedScriptClose='<'+String.fromCharCode(92)+'/script>';
+   const hook='<script src="./bolsa-familia-r1.js?rev=20260914-1415-r8">'+escapedScriptClose;
+   const hook2=hook+'<script src="./visit-regua-r9.js?rev=20260915-1100-v40">'+escapedScriptClose+'<script src="./visit-regua-schedule-r10.js?rev=20260915-1100-v40">'+escapedScriptClose+'<script src="./rn-visit-r1.js?rev=20260915-1100-v40">'+escapedScriptClose+'<script src="./esus-integration-r2.js?rev=20260927-0841-v41">'+escapedScriptClose;
    if(h.includes(hook))h=h.replace(hook,hook2);
    h=h.replace('</head>','<script>document.addEventListener("DOMContentLoaded",()=>{const v=document.querySelector(".version");if(v)v.textContent="PRODUÇÃO · GEO · V41"})<\/script></head>');
    document.open();document.write(h);document.close();
