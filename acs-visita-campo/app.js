@@ -21,7 +21,7 @@ const title=v=>String(v||'').toLowerCase().replace(/(^|\s)\S/g,m=>m.toUpperCase(
 const age=v=>{if(!v)return null;const b=new Date(String(v).slice(0,10)+'T12:00:00'),n=new Date();let a=n.getFullYear()-b.getFullYear();const m=n.getMonth()-b.getMonth();if(m<0||(m===0&&n.getDate()<b.getDate()))a--;return a};
 const fmt=v=>{if(!v)return'—';const p=String(v).slice(0,10).split('-');return p.length===3?`${p[2]}/${p[1]}/${p[0]}`:String(v)};
 function toast(msg,type=''){const t=document.getElementById('toast');t.textContent=msg;t.className='toast '+type;clearTimeout(toast._t);toast._t=setTimeout(()=>t.className='toast hidden',4200)}
-function goBack(){location.href='../esf06-visita/?v=21'}
+function goBack(){location.href='../esf06-producao/v41.html'}
 backBtn.onclick=goBack;
 
 async function getJson(url,timeout=7000){const c=new AbortController(),timer=setTimeout(()=>c.abort(),timeout);try{const r=await fetch(url,{cache:'no-store',signal:c.signal});const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.error||`Erro ${r.status}`);return j}catch(e){if(e.name==='AbortError')throw new Error('A conexão demorou demais. Tente novamente.');throw e}finally{clearTimeout(timer)}}
