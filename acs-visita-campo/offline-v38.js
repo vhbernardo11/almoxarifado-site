@@ -1,5 +1,5 @@
 (()=>{'use strict';
-const nativeFetch=window.fetch.bind(window),DB='esf06-field-v38',VER=1,QUEUE=new Set(['save_visit_group','save_form','complete_agenda']);let dbp=null,syncing=false;
+const nativeFetch=window.fetch.bind(window),DB='esf06-field-v38',VER=1,QUEUE=new Set(['save_visit_group','save_form','complete_agenda','save_family_visit_atomic']);let dbp=null,syncing=false;
 function key(){return new URL(location.href).searchParams.get('k')||localStorage.getItem('esf06_visit_key')||''}
 function openDb(){if(dbp)return dbp;dbp=new Promise((resolve,reject)=>{const r=indexedDB.open(DB,VER);r.onupgradeneeded=()=>{const d=r.result;if(!d.objectStoreNames.contains('outbox'))d.createObjectStore('outbox',{keyPath:'id'});if(!d.objectStoreNames.contains('cache'))d.createObjectStore('cache',{keyPath:'id'})};r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error)});return dbp}
 async function put(store,v){const d=await openDb();return new Promise((res,rej)=>{const q=d.transaction(store,'readwrite').objectStore(store).put(v);q.onsuccess=()=>res(q.result);q.onerror=()=>rej(q.error)})}
@@ -15,8 +15,42 @@ window.fetch=async function(input,init={}){const info=requestInfo(input,init);if
 if(info.method==='GET'&&(info.api==='detail'||info.api==='family_members')){try{const r=await nativeFetch(input,init);if(r.ok)cacheResponse(info.u,r);return r}catch(e){const c=await cachedResponse(info.u);if(c)return c;throw e}}
 return nativeFetch(input,init)};
 async function count(){try{return(await all('outbox')).length}catch{return 0}}
-async function status(){const n=await count();let el=document.getElementById('field-sync-v38');if(!el){el=document.createElement('div');el.id='field-sync-v38';document.body.appendChild(el)}if(!navigator.onLine){el.className='field-sync-v38 off';el.textContent=n?`📡 Offline · ${n} registro(s) salvo(s) no aparelho`:'📡 Offline · os pacientes já sincronizados continuam disponíveis'}else if(n){el.className='field-sync-v38 wait';el.textContent=`⏳ ${n} registro(s) aguardando envio ao Supabase`}else{el.className='field-sync-v38 ok';el.textContent='✓ Sincronizado com Supabase';clearTimeout(status.t);status.t=setTimeout(()=>el.classList.add('fade'),2400)}}
-async function sync(){if(syncing||!navigator.onLine)return;syncing=true;try{const rows=(await all('outbox')).sort((a,b)=>a.created_at-b.created_at);for(const x of rows){try{const u=new URL('https://pvwqxpqetdxtmqqypqjk.supabase.co/functions/v1/acs-visita-api');u.searchParams.set('api',x.api);u.searchParams.set('k',key());const r=await nativeFetch(u,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(x.body),cache:'no-store'});if(!r.ok)break;await del('outbox',x.id)}catch{break}}}finally{syncing=false;status()}}
+async function status(){
+ const rows=await all('outbox').catch(()=>[]),n=rows.length,review=rows.filter(x=>x.requires_review).length;
+ let el=document.getElementById('field-sync-v38');
+ if(!el){el=document.createElement('div');el.id='field-sync-v38';document.body.appendChild(el)}
+ if(review){el.className='field-sync-v38 wait';el.textContent='⚠ '+review+' registro(s) precisam conferência antes de sincronizar'}
+ else if(!navigator.onLine){el.className='field-sync-v38 off';el.textContent=n?'📡 Offline · '+n+' registro(s) salvo(s) no aparelho':'📡 Offline · dados locais disponíveis'}
+ else if(n){el.className='field-sync-v38 wait';el.textContent='⏳ '+n+' registro(s) aguardando envio ao Supabase'}
+ else{el.className='field-sync-v38 ok';el.textContent='✓ Fila sincronizada com Supabase';clearTimeout(status.t);status.t=setTimeout(()=>el.classList.add('fade'),2400)}
+}
+async function sync(){
+ if(syncing||!navigator.onLine)return;syncing=true;
+ try{
+  const rows=(await all('outbox')).sort((a,b)=>a.created_at-b.created_at);
+  for(const x of rows){
+   if(x.requires_review)continue;
+   try{
+    const atomic=x.api==='save_family_visit_atomic';
+    const u=new URL('https://pvwqxpqetdxtmqqypqjk.supabase.co/functions/v1/'+(atomic?'acs-visita-unificada':'acs-visita-api'));
+    u.searchParams.set('api',x.api);
+    const headers={'content-type':'application/json'};
+    if(atomic)headers.authorization='Bearer '+key();else u.searchParams.set('k',key());
+    const r=await nativeFetch(u,{method:'POST',headers,body:JSON.stringify(x.body),cache:'no-store'});
+    if(!r.ok){
+     if(r.status>=400&&r.status<500&&r.status!==429){
+      const j=await r.json().catch(()=>({}));
+      await put('outbox',{...x,requires_review:true,error:j.error||'Erro de validação'});
+     }
+     break;
+    }
+    const j=await r.json().catch(()=>({}));
+    if(atomic&&!j.ok){await put('outbox',{...x,requires_review:true,error:'Resposta não confirmada'});break}
+    await del('outbox',x.id);
+   }catch{break}
+  }
+ }finally{syncing=false;status()}
+}
 window.addEventListener('online',()=>{status();sync()});window.addEventListener('offline',status);document.addEventListener('visibilitychange',()=>{if(!document.hidden)sync()});setInterval(sync,60000);setTimeout(()=>{status();sync()},250);
 window.ACSFieldOfflineV38={sync,count,status};
 })();
