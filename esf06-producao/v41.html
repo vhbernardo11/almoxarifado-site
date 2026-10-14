@@ -22,6 +22,10 @@
      "let ACCESS=new URL(location.href).searchParams.get('k')||localStorage.getItem('esf06_visit_key')||'';\nif(ACCESS)localStorage.setItem('esf06_visit_key',ACCESS);",
      "let ACCESS=new URL(location.href).searchParams.get('k')||localStorage.getItem('esf06_visit_key')||'';\nif(ACCESS==='SEU_K'){localStorage.removeItem('esf06_visit_key');ACCESS=''}\nif(ACCESS){localStorage.setItem('esf06_visit_key',ACCESS);const __u=new URL(location.href);if(__u.searchParams.has('k')){__u.searchParams.delete('k');history.replaceState(null,'',__u.pathname+__u.search+__u.hash)}}"
    );
+   // O módulo de campo usa a chave já salva no mesmo navegador; não repassá-la pela URL do paciente.
+   const legacyFieldUrl="function personalUrl(path,id){const u=new URL(path,location.href);u.searchParams.set('person',id);if(ACCESS)u.searchParams.set('k',ACCESS);return u.href}";
+   const safeFieldUrl="function personalUrl(path,id){const u=new URL(path,location.href);u.searchParams.set('person',id);return u.href}";
+   h=h.replace(legacyFieldUrl,safeFieldUrl);
    h=h.replaceAll("PRODUÇÃO · GEO · R7","PRODUÇÃO · GEO · V41");
    h=h.replaceAll("PRODUÇÃO · GEO','PRODUÇÃO · GEO · R7","PRODUÇÃO · GEO','PRODUÇÃO · GEO · V41");
    h=h.replaceAll('bolsa-familia-r1.js?rev=20260904-1342-r1','bolsa-familia-r1.js?rev=20260914-1415-r8');
