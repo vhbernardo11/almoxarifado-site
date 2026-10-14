@@ -6,6 +6,7 @@ const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const qs=new URL(location.href).searchParams;
 let key=qs.get('k')||localStorage.getItem('esf06_visit_key')||'';
 if(qs.get('k')) localStorage.setItem('esf06_visit_key',key);
+if(qs.has('k')){const clean=new URL(location.href);clean.searchParams.delete('k');history.replaceState(null,'',clean.pathname+clean.search+clean.hash)}
 const personId=qs.get('person')||'';
 const agendaId=qs.get('agenda')||'';
 const plannedReason=qs.get('reason')||'';
@@ -121,6 +122,74 @@ function showQueued(){
 }
 function showSuccess(count){topStatus.textContent='Visita salva';root.innerHTML=`<section class="success-card"><div class="check">✅</div><h2>Visita registrada</h2><p>${state.scope==='family'?'A visita familiar foi salva.':`${count} acompanhamento(s) individual(is) foram ligados à mesma ida ao domicílio.`}</p>${agendaId?'<p class="muted">O item do roteiro foi concluído automaticamente.</p>':''}<button class="btn primary" id="return-route">Voltar ao roteiro</button></section>`;document.getElementById('return-route').onclick=goBack}
 function showError(msg){topStatus.textContent='Não foi possível abrir';root.innerHTML=`<section class="error-card"><h2>Não consegui abrir esta visita</h2><p>${esc(msg)}</p><div class="error-actions"><button class="btn secondary" id="try-again">Tentar novamente</button><button class="btn primary" id="go-route">Voltar ao roteiro</button></div></section>`;document.getElementById('try-again').onclick=init;document.getElementById('go-route').onclick=goBack}
-async function init(){if(!key)return showError('Este aparelho não tem a chave de acesso salva. Abra primeiro o Gestão ACS 360 pelo seu link habitual.');if(!UUID.test(personId))return showError('O paciente não foi identificado corretamente.');root.innerHTML='<section class="boot"><div class="spinner"></div><h2>Abrindo visita…</h2><p>Carregando paciente e família.</p></section>';topStatus.textContent='Carregando paciente e família…';try{const [d,f]=await Promise.all([getJson(detailUrl()),getJson(familyUrl())]);if(!d.person)throw new Error('Paciente não localizado.');state.person=d.person;state.family=f.family;state.members=f.rows||[];if(!state.members.some(m=>m.id===personId))state.members.unshift(d.person);state.selected=new Set([personId]);state.member={};state.members.forEach(m=>state.member[m.id]=newMember(m));render()}catch(e){showError(e.message||'Falha ao carregar a família.')}}
+
+function recoverAccess(message=''){
+ topStatus.textContent='Acesso pessoal';
+ root.innerHTML='<section class="card" style="margin-top:24px"><span class="eyebrow">Gestão ACS 360 · V42</span>'+
+  '<h2>Acesso à visita domiciliar</h2><p class="muted">Informe a sua chave pessoal de acesso para continuar neste aparelho. Não é a senha do e-SUS ou do MIKA.</p>'+
+  (message?'<div class="notice warn">'+esc(message)+'</div>':'')+
+  '<label class="field" for="access-key">Chave pessoal</label>'+
+  '<input id="access-key" type="password" autocomplete="off" spellcheck="false" placeholder="Cole sua chave de acesso">'+
+  '<button type="button" id="unlock-visit" class="btn primary" style="margin-top:12px;width:100%">Acessar o ACS 360</button>'+
+  '<p class="muted" style="font-size:12px;margin-top:12px">A chave fica armazenada neste navegador. Não compartilhe capturas que mostrem sua chave.</p>'+
+  '<button type="button" id="open-main" class="btn secondary" style="width:100%">Abrir sistema principal</button></section>';
+ document.getElementById('open-main').onclick=goBack;
+ document.getElementById('unlock-visit').onclick=async()=>{
+  const candidate=document.getElementById('access-key').value.trim();
+  if(candidate.length<24)return toast('Informe sua chave pessoal completa.','err');
+  const btn=document.getElementById('unlock-visit');btn.disabled=true;btn.textContent='Conferindo acesso…';
+  try{
+   const u=new URL(API);u.searchParams.set('api','profile');u.searchParams.set('k',candidate);
+   await getJson(u,9000);
+   key=candidate;
+   localStorage.setItem('esf06_visit_key',key);
+   const clean=new URL(location.href);
+   if(clean.searchParams.has('k')){clean.searchParams.delete('k');history.replaceState(null,'',clean.pathname+clean.search+clean.hash)}
+   init();
+  }catch(e){toast(e.message||'Acesso não reconhecido.','err');btn.disabled=false;btn.textContent='Acessar o ACS 360'}
+ };
+}
+async function choosePatient(){
+ topStatus.textContent='Escolher paciente';
+ root.innerHTML='<section class="card" style="margin-top:12px"><span class="eyebrow">Gestão ACS 360 · V42</span>'+
+  '<h1 style="margin:8px 0 8px">Visita domiciliar</h1>'+
+  '<p class="muted">Pesquise uma pessoa cadastrada para abrir a visita dela e dos integrantes da família.</p>'+
+  '<label class="field" for="field-search">Buscar paciente</label>'+
+  '<input id="field-search" type="search" autocapitalize="words" placeholder="Digite pelo menos 2 letras do nome">'+
+  '<div id="field-patient-results" style="margin-top:14px" aria-live="polite"><div class="notice info">Digite um nome para procurar.</div></div>'+
+  '<button type="button" id="field-main" class="btn secondary" style="margin-top:14px;width:100%">Abrir Gestão ACS 360 principal</button></section>';
+ document.getElementById('field-main').onclick=goBack;
+ const search=document.getElementById('field-search'),results=document.getElementById('field-patient-results');
+ let timer=0,sequence=0;
+ search.oninput=()=>{
+  clearTimeout(timer);const q=search.value.trim(),n=++sequence;
+  if(q.length<2){results.innerHTML='<div class="notice info">Digite pelo menos 2 letras.</div>';return}
+  results.innerHTML='<div class="notice info">Procurando…</div>';
+  timer=setTimeout(async()=>{
+   const u=new URL(API);u.searchParams.set('api','patients');u.searchParams.set('q',q);
+   u.searchParams.set('limit','30');u.searchParams.set('k',key);
+   try{
+    const data=await getJson(u,10000);
+    if(n!==sequence)return;
+    const rows=(data.rows||[]).filter(p=>UUID.test(String(p.id||'')));
+    if(!rows.length){results.innerHTML='<div class="notice warn">Nenhum paciente encontrado. Confira a grafia.</div>';return}
+    results.innerHTML=rows.map(p=>'<div class="member" style="margin:8px 0;align-items:center">'+
+      '<div class="member-main"><b>'+esc(title(p.full_name))+'</b>'+
+      '<small>Família '+esc(p.family_code||'—')+'</small></div>'+
+      '<button type="button" class="btn primary" data-pick-person="'+esc(p.id)+'">Visitar</button></div>').join('')+
+      (rows.length>=30?'<div class="notice info">Mostrando os primeiros 30 resultados. Refine a busca.</div>':'');
+    results.querySelectorAll('[data-pick-person]').forEach(b=>b.onclick=()=>{
+      const u=new URL(location.href);u.searchParams.set('person',b.dataset.pickPerson);u.searchParams.delete('k');location.href=u.href;
+    });
+   }catch(e){
+    if(n!==sequence)return;
+    if(/acesso inv[aá]lido|401/i.test(e.message||'')){key='';localStorage.removeItem('esf06_visit_key');recoverAccess('Sua chave precisa ser validada novamente.')}
+    else results.innerHTML='<div class="notice warn">'+esc(e.message||'Não foi possível pesquisar.')+'</div>';
+   }
+  },300);
+ };
+ search.focus();
+}
+async function init(){if(!key)return recoverAccess();if(!personId)return choosePatient();if(!UUID.test(personId))return showError('O paciente não foi identificado corretamente.');root.innerHTML='<section class="boot"><div class="spinner"></div><h2>Abrindo visita…</h2><p>Carregando paciente e família.</p></section>';topStatus.textContent='Carregando paciente e família…';try{const [d,f]=await Promise.all([getJson(detailUrl()),getJson(familyUrl())]);if(!d.person)throw new Error('Paciente não localizado.');state.person=d.person;state.family=f.family;state.members=f.rows||[];if(!state.members.some(m=>m.id===personId))state.members.unshift(d.person);state.selected=new Set([personId]);state.member={};state.members.forEach(m=>state.member[m.id]=newMember(m));render()}catch(e){if(/acesso inv[aá]lido|401/i.test(e.message||'')){key='';localStorage.removeItem('esf06_visit_key');recoverAccess('Sua chave precisa ser validada novamente.')}else showError(e.message||'Falha ao carregar a família.')}}
 init();
 })();
