@@ -90,21 +90,24 @@ async function saveVisit(){
    showSuccess(selected.length);
    return;
   }
-  await postApi('save_visit_group',{id:state.groupId,family_id:state.person.family_id,
+  let anyQueued=false;
+  const groupWrite=await postApi('save_visit_group',{id:state.groupId,family_id:state.person.family_id,
    primary_person_id:personId,agenda_item_id:agendaId||null,visit_date:state.date,visit_time:state.time,
    visit_scope:'cidadao',source:'Visita campo v21',general_notes:state.generalNotes||null,
    signer_name:signedBy,signature_data:sig,signed_at:signedAt,status:'completed',
    member_ids:selected.map(m=>m.id)});
+  anyQueued=!!groupWrite.queued;
   for(const m of selected){
    const ss=state.member[m.id],notes=[state.generalNotes,ss.notes].filter(Boolean).join('\n\n');
-   await postApi('save_form',{id:crypto.randomUUID(),group_id:state.groupId,person_id:m.id,family_id:m.family_id,
+   const formWrite=await postApi('save_form',{id:crypto.randomUUID(),group_id:state.groupId,person_id:m.id,family_id:m.family_id,
     patient_name:m.full_name,family_code:state.family?.family_code||state.person.family_code,
     visit_date:state.date,visit_time:state.time,visit_result:ss.outcome,status:'completed',
     answers:answersFor(m),questionnaire_snapshot:questions(m).map(([slug,label])=>({slug,label,source:'visita-campo-v21'})),
     signer_name:signedBy,signature_data:sig,signed_at:signedAt,notes:notes||null,finalize:true});
+   anyQueued=anyQueued||!!formWrite.queued;
   }
   if(agendaId)await postApi('complete_agenda',{id:agendaId}).catch(e=>console.warn('Agenda não concluída automaticamente',e));
-  showSuccess(selected.length);
+  if(anyQueued)showQueued();else showSuccess(selected.length);
  }catch(e){toast(e?.message||'Não foi possível salvar a visita.','err')}
  finally{state.saving=false;saving(false)}
 }
