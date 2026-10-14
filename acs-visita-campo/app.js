@@ -62,7 +62,60 @@ function signer(){const s=document.getElementById('signer')?.value||'';if(s==='_
 function validate(){if(!state.selected.size)return'Selecione pelo menos uma pessoa que participou da visita.';if(state.scope==='individual'){for(const m of state.members.filter(x=>state.selected.has(x.id))){const s=state.member[m.id];if(!s.outcome)return`Informe o desfecho de ${title(m.full_name)}.`;if(!s.motives.size)return`Marque pelo menos um motivo para ${title(m.full_name)}.`;if(s.motives.has('Busca ativa')&&!s.active.size)return`Informe a busca ativa de ${title(m.full_name)}.`}}return''}
 function answersFor(m){const s=state.member[m.id];return{visit_scope:state.scope,official_visit:{outcome:s.outcome,motives:[...s.motives],active_search:[...s.active],followup:[...s.follow],measurements:{weight:s.weight||null,height:s.height||null,blood_pressure:s.bp||null,temperature:s.temperature||null,glucose:s.glucose||null,glucose_moment:s.glucoseMoment||null}},support_questions:s.support,member_notes:s.notes||null,general_notes:state.generalNotes||null,visit_group_id:state.groupId,selected_family_members:[...state.selected],planned_reason:plannedReason||null,standalone_visit_version:'21'}}
 function saving(on){document.querySelector('.saving-mask')?.remove();if(!on)return;const d=document.createElement('div');d.className='saving-mask';d.innerHTML='<div class="saving-box"><div class="spinner"></div><b>Salvando visita…</b></div>';document.body.appendChild(d)}
-async function saveVisit(){const problem=validate();if(problem)return toast(problem,'err');if(state.saving)return;state.saving=true;saving(true);try{const selected=state.members.filter(m=>state.selected.has(m.id)),sig=state.signature?state.canvas.toDataURL('image/png'):null,signedBy=signer()||null,signedAt=sig?new Date().toISOString():null;await postApi('save_visit_group',{id:state.groupId,family_id:state.person.family_id,primary_person_id:personId,agenda_item_id:agendaId||null,visit_date:state.date,visit_time:state.time,visit_scope:state.scope==='family'?'familia_periodica':'cidadao',source:'Visita campo v21',general_notes:state.generalNotes||null,signer_name:signedBy,signature_data:sig,signed_at:signedAt,status:'completed',member_ids:selected.map(m=>m.id)});if(state.scope==='family'){const m=state.members.find(x=>x.id===personId)||selected[0],s=state.member[personId],a=answersFor(m);a.official_visit.motives=['Visita periódica'];a.family_periodic_present=selected.map(x=>({id:x.id,name:x.full_name}));await postApi('save_form',{id:crypto.randomUUID(),group_id:state.groupId,person_id:m.id,family_id:m.family_id,patient_name:m.full_name,family_code:state.family?.family_code||state.person.family_code,visit_date:state.date,visit_time:state.time,visit_result:s.outcome,status:'completed',answers:a,questionnaire_snapshot:[],signer_name:signedBy,signature_data:sig,signed_at:signedAt,notes:state.generalNotes||null,finalize:true})}else{for(const m of selected){const s=state.member[m.id],notes=[state.generalNotes,s.notes].filter(Boolean).join('\n\n');await postApi('save_form',{id:crypto.randomUUID(),group_id:state.groupId,person_id:m.id,family_id:m.family_id,patient_name:m.full_name,family_code:state.family?.family_code||state.person.family_code,visit_date:state.date,visit_time:state.time,visit_result:s.outcome,status:'completed',answers:answersFor(m),questionnaire_snapshot:questions(m).map(([slug,label])=>({slug,label,source:'visita-campo-v21'})),signer_name:signedBy,signature_data:sig,signed_at:signedAt,notes:notes||null,finalize:true})}}if(agendaId)await postApi('complete_agenda',{id:agendaId}).catch(e=>console.warn('Agenda não concluída automaticamente',e));showSuccess(selected.length)}catch(e){toast(e.message||'Não foi possível salvar a visita.','err')}finally{state.saving=false;saving(false)}}
+async function saveVisit(){
+ const problem=validate();if(problem)return toast(problem,'err');
+ if(state.saving)return;
+ state.saving=true;saving(true);
+ try{
+  const selected=state.members.filter(m=>state.selected.has(m.id));
+  const sig=state.signature?state.canvas.toDataURL('image/png'):null;
+  const signedBy=signer()||null;
+  const signedAt=sig?new Date().toISOString():null;
+  if(state.scope==='family'){
+   const url=new URL('https://pvwqxpqetdxtmqqypqjk.supabase.co/functions/v1/acs-visita-unificada');
+   url.searchParams.set('api','save_family_visit_atomic');
+   const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),14000);
+   let j;
+   try{
+    const res=await fetch(url,{method:'POST',headers:{'content-type':'application/json',authorization:'Bearer '+key},
+      body:JSON.stringify({group_id:state.groupId,person_id:personId,agenda_item_id:agendaId||null,
+        visit_date:state.date,visit_time:state.time,general_notes:state.generalNotes||null,
+        member_ids:selected.map(m=>m.id),signature_data:sig,signer_name:signedBy,signed_at:signedAt}),
+      signal:controller.signal,cache:'no-store'});
+    j=await res.json().catch(()=>({}));
+    if(!res.ok)throw new Error(j.error||'Falha ao registrar visita familiar');
+   }finally{clearTimeout(timer)}
+   if(j.queued){showQueued();return}
+   if(!j.ok)throw new Error('A gravação não foi confirmada pelo Supabase');
+   showSuccess(selected.length);
+   return;
+  }
+  await postApi('save_visit_group',{id:state.groupId,family_id:state.person.family_id,
+   primary_person_id:personId,agenda_item_id:agendaId||null,visit_date:state.date,visit_time:state.time,
+   visit_scope:'cidadao',source:'Visita campo v21',general_notes:state.generalNotes||null,
+   signer_name:signedBy,signature_data:sig,signed_at:signedAt,status:'completed',
+   member_ids:selected.map(m=>m.id)});
+  for(const m of selected){
+   const ss=state.member[m.id],notes=[state.generalNotes,ss.notes].filter(Boolean).join('\n\n');
+   await postApi('save_form',{id:crypto.randomUUID(),group_id:state.groupId,person_id:m.id,family_id:m.family_id,
+    patient_name:m.full_name,family_code:state.family?.family_code||state.person.family_code,
+    visit_date:state.date,visit_time:state.time,visit_result:ss.outcome,status:'completed',
+    answers:answersFor(m),questionnaire_snapshot:questions(m).map(([slug,label])=>({slug,label,source:'visita-campo-v21'})),
+    signer_name:signedBy,signature_data:sig,signed_at:signedAt,notes:notes||null,finalize:true});
+  }
+  if(agendaId)await postApi('complete_agenda',{id:agendaId}).catch(e=>console.warn('Agenda não concluída automaticamente',e));
+  showSuccess(selected.length);
+ }catch(e){toast(e?.message||'Não foi possível salvar a visita.','err')}
+ finally{state.saving=false;saving(false)}
+}
+function showQueued(){
+ topStatus.textContent='Aguardando sincronização';
+ root.innerHTML='<section class="success-card"><div class="check">📡</div><h2>Salvo neste aparelho</h2>'+
+ '<p>A visita familiar está aguardando internet para ser enviada. Ainda não é uma gravação confirmada no Supabase.</p>'+
+ '<p class="muted">Não apague os dados do navegador antes de sincronizar.</p>'+
+ '<button class="btn primary" id="return-route">Voltar ao roteiro</button></section>';
+ document.getElementById('return-route').onclick=goBack;
+}
 function showSuccess(count){topStatus.textContent='Visita salva';root.innerHTML=`<section class="success-card"><div class="check">✅</div><h2>Visita registrada</h2><p>${state.scope==='family'?'A visita familiar foi salva.':`${count} acompanhamento(s) individual(is) foram ligados à mesma ida ao domicílio.`}</p>${agendaId?'<p class="muted">O item do roteiro foi concluído automaticamente.</p>':''}<button class="btn primary" id="return-route">Voltar ao roteiro</button></section>`;document.getElementById('return-route').onclick=goBack}
 function showError(msg){topStatus.textContent='Não foi possível abrir';root.innerHTML=`<section class="error-card"><h2>Não consegui abrir esta visita</h2><p>${esc(msg)}</p><div class="error-actions"><button class="btn secondary" id="try-again">Tentar novamente</button><button class="btn primary" id="go-route">Voltar ao roteiro</button></div></section>`;document.getElementById('try-again').onclick=init;document.getElementById('go-route').onclick=goBack}
 async function init(){if(!key)return showError('Este aparelho não tem a chave de acesso salva. Abra primeiro o Gestão ACS 360 pelo seu link habitual.');if(!UUID.test(personId))return showError('O paciente não foi identificado corretamente.');root.innerHTML='<section class="boot"><div class="spinner"></div><h2>Abrindo visita…</h2><p>Carregando paciente e família.</p></section>';topStatus.textContent='Carregando paciente e família…';try{const [d,f]=await Promise.all([getJson(detailUrl()),getJson(familyUrl())]);if(!d.person)throw new Error('Paciente não localizado.');state.person=d.person;state.family=f.family;state.members=f.rows||[];if(!state.members.some(m=>m.id===personId))state.members.unshift(d.person);state.selected=new Set([personId]);state.member={};state.members.forEach(m=>state.member[m.id]=newMember(m));render()}catch(e){showError(e.message||'Falha ao carregar a família.')}}
