@@ -14,7 +14,109 @@
 <div class="boot"><div class="box"><div class="spin"></div><strong>Carregando Gestão ACS 360 · V41…</strong><p style="color:#708096">Ativando Régua ACS e integração e-SUS APS.</p></div></div>
 <script>
 (async()=>{
+
+ const ACCESS_STORAGE_KEY='esf06_visit_key';
+ const PROFILE_API='https://pvwqxpqetdxtmqqypqjk.supabase.co/functions/v1/acs-visita-api';
+
+ function readAccessInput(raw){
+   let input=String(raw||'').trim();
+   if(/^https?:\/\//i.test(input)){
+     const link=new URL(input);
+     const allowedPath='/almoxarifado-site/esf06-producao/';
+     if(link.origin!==location.origin || !link.pathname.startsWith(allowedPath)){
+       throw new Error('O link informado não pertence ao Gestão ACS 360.');
+     }
+     input=(link.searchParams.get('k')||'').trim();
+   }
+   if(!input || input==='SEU_K')throw new Error('Informe a chave pessoal ou o link completo recebido da unidade.');
+   return input;
+ }
+
+ async function validateAccess(key){
+   const url=new URL(PROFILE_API);
+   url.searchParams.set('api','profile');
+   url.searchParams.set('k',key);
+   const resp=await fetch(url.toString(),{cache:'no-store'});
+   const result=await resp.json().catch(()=>null);
+   if(!resp.ok || !result || !result.profile){
+     throw new Error('A chave não foi reconhecida. Confira seu link pessoal com a unidade.');
+   }
+ }
+
+ function askForPersonalAccess(message=''){
+   return new Promise(resolve=>{
+     const box=document.querySelector('.box');
+     const boot=document.querySelector('.boot');
+     if(boot){boot.style.display='grid';boot.style.minHeight='100vh'}
+     box.style.textAlign='left';
+     box.innerHTML=[
+       '<h2 style="margin:0 0 9px;font-size:24px">🔐 Acesso pessoal ESF06</h2>',
+       '<p style="line-height:1.5;color:#526176;margin:0 0 16px">Para proteger os cadastros dos pacientes, informe sua chave pessoal ou cole o link de acesso que você recebeu.</p>',
+       '<form id="esf06-access-form">',
+       '<label for="esf06-secret" style="display:block;font-weight:700;margin-bottom:7px">Chave ou link pessoal</label>',
+       '<input id="esf06-secret" type="password" required autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Cole aqui seu acesso" style="box-sizing:border-box;width:100%;padding:14px;border:1px solid #bccbd8;border-radius:12px;font:inherit;min-height:48px">',
+       '<button id="esf06-access-submit" type="submit" style="margin-top:12px;border:0;border-radius:12px;padding:13px 18px;min-height:48px;background:#079b88;color:#fff;font:inherit;font-weight:800;width:100%">Entrar no aplicativo</button>',
+       '<p id="esf06-access-error" role="alert" style="color:#9b2525;line-height:1.4;min-height:20px;font-size:14px"></p>',
+       '</form>',
+       '<p style="color:#63758b;font-size:13px;line-height:1.5;margin:5px 0 0">Não possui sua chave? Solicite seu link pessoal à administração da ESF06. Nunca compartilhe sua chave em conversas ou capturas de tela.</p>'
+     ].join('');
+     const form=box.querySelector('#esf06-access-form');
+     const input=box.querySelector('#esf06-secret');
+     const error=box.querySelector('#esf06-access-error');
+     const btn=box.querySelector('#esf06-access-submit');
+     error.textContent=message;
+     form.addEventListener('submit',async e=>{
+       e.preventDefault();
+       let key;
+       try{key=readAccessInput(input.value)}
+       catch(err){error.textContent=err.message;return}
+       btn.disabled=true;btn.textContent='Verificando acesso…';error.textContent='';
+       try{
+         await validateAccess(key);
+         localStorage.setItem(ACCESS_STORAGE_KEY,key);
+         input.value='';
+         box.style.textAlign='center';
+         box.innerHTML='<div class="spin"></div><strong>Carregando Gestão ACS 360…</strong>';
+         resolve();
+       }catch(err){
+         error.textContent=err instanceof TypeError?'Falha na conexão. Verifique a internet e tente novamente.':err.message;
+         btn.disabled=false;btn.textContent='Entrar no aplicativo';
+       }
+     });
+     input.focus();
+   });
+ }
+
+ async function ensurePersonalAccess(){
+   const url=new URL(location.href);
+   const linkKey=(url.searchParams.get('k')||'').trim();
+   if(url.searchParams.has('k')){
+     url.searchParams.delete('k');
+     history.replaceState(null,'',url.pathname+url.search+url.hash);
+   }
+   const saved=(localStorage.getItem(ACCESS_STORAGE_KEY)||'').trim();
+   const key=linkKey && linkKey!=='SEU_K' ? linkKey : saved;
+   if(key && key!=='SEU_K'){
+     try{
+       await validateAccess(key);
+       localStorage.setItem(ACCESS_STORAGE_KEY,key);
+       return;
+     }catch(err){
+       if(err instanceof TypeError){
+         await askForPersonalAccess('Não foi possível verificar a conexão. Tente sua chave novamente.');
+       }else{
+         localStorage.removeItem(ACCESS_STORAGE_KEY);
+         await askForPersonalAccess('Seu acesso salvo não foi reconhecido. Informe novamente a chave pessoal.');
+       }
+       return;
+     }
+   }
+   if(saved==='SEU_K')localStorage.removeItem(ACCESS_STORAGE_KEY);
+   await askForPersonalAccess();
+ }
+
  try{
+   await ensurePersonalAccess();
    const r=await fetch('./index.html?force=20260927-1025-v41',{cache:'no-store'});
    if(!r.ok)throw new Error('Falha ao carregar a aplicação');
    let h=await r.text();
