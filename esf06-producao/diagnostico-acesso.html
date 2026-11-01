@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<meta http-equiv="Cache-Control" content="no-store">
+<title>Diagnóstico de acesso • Gestão ACS 360</title>
+<style>
+:root{font-family:system-ui,-apple-system,Arial,sans-serif;color:#17243b;background:#f5f8fb}
+*{box-sizing:border-box}body{margin:0}.top{background:#071a31;color:#fff;padding:24px 18px}.top h1{font-size:24px;margin:0}.top p{color:#c5d1e1;font-size:14px}
+main{max-width:680px;margin:auto;padding:18px}.card{border:1px solid #dce5ed;border-radius:18px;background:white;padding:20px;margin:12px 0}
+.result{font-weight:800;line-height:1.5;font-size:17px}.info{font-size:14px;color:#526176;line-height:1.65}
+button,a.action{display:inline-block;background:#078b79;color:white;border:0;text-decoration:none;padding:14px;border-radius:12px;font-weight:800;font-size:16px;min-height:46px}
+button{width:100%}a.action{text-align:center;width:100%;margin-top:12px}.warn{color:#9b4d14}.good{color:#16764c}.bad{color:#bd3238}ol{padding-left:22px;line-height:1.7}.line{padding:8px 0;border-bottom:1px solid #eef1f5}
+</style>
+</head>
+<body>
+<div class="top"><h1>Diagnóstico — Gestão ACS 360</h1><p>V41 • Verificação segura, sem exibir sua chave pessoal</p></div>
+<main>
+<div class="card"><div id="result" class="result" role="status">Verificando este navegador…</div><p id="details" class="info">Este teste não altera os cadastros e não mostra sua credencial.</p><button id="repeat">Refazer teste</button></div>
+<div class="card"><b>Onde o acesso falhou?</b><div class="line" id="browser">Ambiente: verificando</div><div class="line" id="storage">Autorização local: verificando</div><div class="line" id="server">Autorização do servidor: aguardando</div></div>
+<div class="card">
+<b>Como resolver</b>
+<ol><li>Abra esta página no <strong>Chrome</strong> (fora do navegador interno do ChatGPT).</li><li>Se a autorização estiver ausente, abra no Chrome seu <strong>atalho pessoal original da V41</strong>, que já funcionava. Não use um link público sem credencial para ativar o aparelho.</li><li>Volte ao diagnóstico e pressione <strong>Refazer teste</strong>. Se aparecer "acesso reconhecido", abra a V41.</li></ol>
+<p class="info">O armazenamento do navegador interno pode ser diferente do Chrome. A autorização fica no navegador, não no nome da pessoa.</p>
+<a class="action" href="./v41.html">Abrir Gestão ACS 360 — V41</a>
+</div></main>
+<script>
+(function(){
+'use strict';
+const el=id=>document.getElementById(id),storageKey='esf06_visit_key';
+async function check(){
+  const result=el('result'),details=el('details'),storage=el('storage'),server=el('server');
+  result.textContent='Verificando…';result.className='result';details.textContent='Este teste não revela sua chave.';
+  const ua=navigator.userAgent||'';
+  el('browser').textContent='Navegador: '+(/; wv\)/i.test(ua)?'WebView Android (integrado a aplicativo)':/CriOS/i.test(ua)?'Chrome iOS':/Chrome/i.test(ua)?'Baseado em Chrome (confirme se está fora do app)':'outro navegador');
+  let saved='',supported=true;
+  try{saved=localStorage.getItem(storageKey)||'';}catch(e){supported=false;}
+  const given=new URL(location.href).searchParams.get('k')||'';
+  const key=given&&given!=='SEU_K'?given:saved;
+  storage.textContent='Armazenamento: '+(supported?(key?'chave encontrada (conteúdo oculto)':'nenhuma chave encontrada neste navegador'):'indisponível neste navegador');
+  if(!key){
+    server.textContent='Servidor: não consultado (faltou a chave)';
+    result.textContent='Autorização ausente neste navegador';result.className='result warn';
+    details.textContent='A mensagem “Link pessoal necessário” acontece antes do contato com o banco. Use o Chrome em que seu link pessoal já funcionou.';
+    return;
+  }
+  server.textContent='Servidor: validando autorização…';
+  try{
+    const url=new URL('https://pvwqxpqetdxtmqqypqjk.supabase.co/functions/v1/acs-visita-api');
+    url.searchParams.set('api','profile');url.searchParams.set('k',key);
+    const response=await fetch(url.toString(),{cache:'no-store',referrerPolicy:'no-referrer'});
+    if(response.ok){
+      storage.textContent='Armazenamento: chave encontrada (conteúdo oculto)';
+      server.textContent='Servidor: autorização reconhecida';
+      result.textContent='Acesso reconhecido';result.className='result good';
+      details.textContent='A V41 deverá abrir neste navegador. Se não abrir, o problema ocorre depois da autenticação.';
+    }else{
+      server.textContent='Servidor: acesso recusado (HTTP '+response.status+')';
+      result.textContent='Chave presente, mas não aceita';result.className='result bad';
+      details.textContent='Este aparelho tem uma chave, mas o servidor não a reconheceu. A autorização pode ter sido revogada ou o link pode estar incorreto.';
+    }
+  }catch(e){
+    server.textContent='Servidor: erro de rede, conexão ou política do navegador';
+    result.textContent='Não foi possível validar no servidor';result.className='result warn';
+    details.textContent='Verifique internet e tente no Chrome. Não conclua que sua conta está desativada com base neste erro.';
+  }
+}
+el('repeat').addEventListener('click',check);
+check();
+})();
+</script>
+</body>
+</html>
