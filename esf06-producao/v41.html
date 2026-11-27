@@ -35,32 +35,17 @@
  }
  function showAccessPanel(message){
    document.body.innerHTML=`<div class="boot"><div class="box" style="width:100%;text-align:left">
-       <strong style="font-size:20px">Acesso ao Gestão ACS 360</strong>
+       <strong style="font-size:20px">Gestão ACS 360 · acesso seguro</strong>
        <p id="access-message" style="color:#526176;line-height:1.5"></p>
-       <form id="access-form">
-         <label for="access-ticket" style="display:block;font-weight:650;margin:12px 0 6px">Código de ativação do dispositivo</label>
-         <input id="access-ticket" type="password" inputmode="text" autocomplete="off" spellcheck="false" placeholder="Cole aqui o código de ativação" style="box-sizing:border-box;width:100%;padding:13px;border:1px solid #ccd5e0;border-radius:10px">
-         <p style="font-size:12px;color:#68788b">Você também pode abrir diretamente o link privado de ativação. O código é de uso único. Não envie sua chave pessoal por mensagem.</p>
-         <button type="submit" style="cursor:pointer;border:0;background:#078b79;color:white;border-radius:12px;padding:13px;width:100%;font-weight:750">Ativar neste navegador</button>
-       </form>
-       <p id="access-input-error" role="alert" style="color:#a5212d;font-size:13px"></p>
+       <p style="font-size:14px;line-height:1.55;color:#526176">Este navegador precisa abrir o <b>seu link pessoal de acesso</b> uma vez. O acesso será salvo no navegador, sem digitar senha. Não compartilhe esse link.</p>
+       <p style="font-size:13px;line-height:1.5;color:#526176">Se você abriu o programa dentro do ChatGPT, copie o link pessoal e abra no Chrome. Os navegadores não compartilham a autorização entre si.</p>
        <button id="access-retry" type="button" style="cursor:pointer;border:1px solid #cdd6e0;background:white;color:#17243b;border-radius:12px;padding:12px;width:100%;font-weight:700">Tentar novamente</button>
-       <p style="font-size:13px;line-height:1.5;color:#526176">Use o mesmo Chrome em que ativou o programa. Se não tiver um código válido, solicite uma nova ativação. Os dados permanecem no Supabase.</p>
+       <p style="font-size:13px;line-height:1.5;color:#526176">Use sempre o mesmo Chrome para manter o acesso. Seus cadastros permanecem no Supabase.</p>
        <a href="./diagnostico-acesso.html" style="display:block;text-align:center;color:#078b79;font-weight:650">Verificar acesso neste navegador</a>
      </div></div>`;
    document.getElementById('access-message').textContent=message;
    document.getElementById('access-retry').onclick=()=>location.reload();
-   document.getElementById('access-form').onsubmit=e=>{
-     e.preventDefault();
-     let code=document.getElementById('access-ticket').value.trim();
-     const error=document.getElementById('access-input-error');
-     if(!/^[a-f0-9]{64}$/i.test(code)){
-       error.textContent='Código inválido. Use o link ou código de ativação fornecido para este aparelho.';
-       return;
-     }
-     history.replaceState(null,'',location.pathname+location.search+'#ativar='+code.toLowerCase());
-     location.reload();
-   };
+
  }
  async function validateAccess(){
    let key='';
@@ -75,11 +60,11 @@
      key=(localStorage.getItem('esf06_visit_key')||'').trim();
      if(key==='SEU_K'){localStorage.removeItem('esf06_visit_key');key='';}
    }catch(_){
-     showAccessPanel('O navegador não permite guardar a autorização. Abra esta página diretamente no Chrome, fora do navegador interno de outro aplicativo.');
+     showAccessPanel('O navegador atual não consegue guardar sua autorização. Abra o link pessoal diretamente no Chrome, fora do ChatGPT.');
      return false;
    }
    if(!key){
-     showAccessPanel('Este navegador ainda não tem uma autorização salva. É preciso ativá-lo uma única vez por meio de um link privado.');
+     showAccessPanel('Este navegador ainda não reconhece seu acesso. Abra o link pessoal de entrada automática que foi enviado a você.');
      return false;
    }
    const url=new URL('https://pvwqxpqetdxtmqqypqjk.supabase.co/functions/v1/acs-visita-api');
@@ -89,7 +74,7 @@
      if(response.ok)return true;
      if(response.status===401||response.status===403){
        localStorage.removeItem('esf06_visit_key');
-       showAccessPanel('A autorização salva neste navegador foi recusada. Ative novamente com um link privado de uso único.');
+       showAccessPanel('Este navegador perdeu a autorização. Abra novamente seu link pessoal de entrada automática.');
        return false;
      }
      showAccessPanel('O Supabase respondeu com erro HTTP '+response.status+'. Sua autorização foi preservada. Tente novamente.');
